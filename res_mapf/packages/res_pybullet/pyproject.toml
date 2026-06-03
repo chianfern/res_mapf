@@ -14,7 +14,7 @@ dependencies = [
 res_mapf_planning = { workspace = true }
 
 [project.scripts]
-sim = "res_pybullet.simulation.simulation:main"
+res_pybullet_sim = "res_pybullet.simulation.simulation:main"
 
 [build-system]
 requires = ["uv_build>=0.9.13,<0.10.0"]
