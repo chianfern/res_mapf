@@ -1,3 +1,3 @@
 ```bash
-uv run sim
+uv run res_pybullet_sim
 ```
