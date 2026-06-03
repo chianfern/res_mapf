@@ -1,6 +1,6 @@
 # RMF2 MAPF Robot Execution System (RES)
 
-> Coordination and robust execution of Multi-Agent Path Finding (MAPF) plans.
+Coordination and robust execution of Multi-Agent Path Finding (MAPF) plans.
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 ![ROS 2](https://img.shields.io/badge/ROS-2-22314E?logo=ros)
