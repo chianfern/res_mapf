@@ -20,6 +20,7 @@ import time
 from threading import Thread
 from typing import List
 
+from res_map.map_data import MapData
 from res_mapf_planning.mapf_solve.mapf_solver_base import Location
 from res_plan_execution.robot_controllers.base_robot_controller import (
     BaseRobotController,
@@ -33,9 +34,8 @@ logger = logging.getLogger("SharedMemoryAgentController")
 class SharedMemoryAgentController(BaseRobotController):
     """Implements BaseRobotController interface to forward enqueued Actions to individual agents."""
 
-    def __init__(self) -> None:
-        self._shutdown = False
-
+    def __init__(self, map_data: MapData) -> None:
+        super().__init__(map_data)
         self.robots: dict[str, SharedMemoryAgent] = {}
         self._shutdown = False
 
@@ -54,7 +54,7 @@ class SharedMemoryAgentController(BaseRobotController):
             return
         if robot_id not in self.robots:
             logger.info(f"Creating new agent {robot_id}.")
-            self.robots[robot_id] = SharedMemoryAgent(robot_id)
+            self.robots[robot_id] = SharedMemoryAgent(robot_id, self.map_data)
         self.robots[robot_id].enqueue(waypoints_with_callbacks)
 
     def shutdown(self, interrupted: bool = False) -> None:
@@ -67,8 +67,9 @@ class SharedMemoryAgentController(BaseRobotController):
 
 
 class SharedMemoryAgent:
-    def __init__(self, robot_id: str) -> None:
+    def __init__(self, robot_id: str, map_data: MapData) -> None:
         self.robot_id = robot_id
+        self._map_data = map_data
 
         # Configs
         self._shmd = SharedMemoryDict(name=robot_id, size=8192)
@@ -148,7 +149,12 @@ class SharedMemoryAgent:
 
     def _location_to_str(self, location: Location) -> str:
         if location.is_named():
-            return str(location.name)
+            if location.name in self._map_data.world_positions:
+                x, y = self._map_data.world_positions[location.name]
+                return f"{x},{y}"
+            raise ValueError(
+                f"Named location '{location.name}' not found in map."
+            )
         return f"{location.x},{location.y}"
 
     def _publish(self) -> None:

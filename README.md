@@ -131,7 +131,7 @@ source install/activate.sh
 **1. Run the PyBullet simulation.** Start it with the agents' start coordinates:
 
 ```bash
-res_pybullet_sim --coords "0,0 2,0"
+res_pybullet_sim --named P0 P2 --map src/res_mapf/res_mapf/packages/demos/warehouse.lif.json
 ```
 
 **2. Run the demonstration script.** In the *project environment*, run the integration demo:

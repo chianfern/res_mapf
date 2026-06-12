@@ -17,6 +17,7 @@
 import logging
 import time
 
+from res_map.map_data import load_map_data
 from res_mapf_planning.mapf_solve.solvers.cbs_adapter import CBSAdapter
 from res_mapf_planning.planning.mapf_coordinator import MAPFCoordinator
 from res_mapf_planning.planning.multi_agent_context import MultiAgentContext
@@ -41,8 +42,10 @@ logger = logging.getLogger("direct_transport")
 """
 Wire publishes and subscribes between Plan Server and Plan Executor directly for testing.
 
-python3 src/res_ros2_ws/res_ros2/res_ros2/test/integration.py
 """
+
+
+IN_LIF = "warehouse.lif.json"
 
 
 class DirectPlanServerTransport:
@@ -215,6 +218,9 @@ def main():
         level=logging.DEBUG,
         format="[%(levelname)s] %(asctime)s %(name)s: %(message)s",
     )
+    map_data = load_map_data(
+        IN_LIF
+    )
 
     # --- Transports ---
     server_transport = DirectPlanServerTransport()
@@ -223,7 +229,7 @@ def main():
 
     # --- Plan Server ---
     context = MultiAgentContext()
-    solver = CBSAdapter()
+    solver = CBSAdapter(map_data)
     coordinator = MAPFCoordinator(context, solver)
     plan_generator = PlanGenerator()
 
@@ -235,7 +241,7 @@ def main():
     )
 
     # --- Plan Executor ---
-    robot_controller = SharedMemoryAgentController()
+    robot_controller = SharedMemoryAgentController(map_data)
     dependency_manager = DependencyManager()
 
     plan_executor = PlanExecutor(
@@ -246,8 +252,8 @@ def main():
 
     # --- Register robots ---
     agents = {
-        "agent_0": "0,0",
-        "agent_1": "2,0",
+        "agent_0": "P0",
+        "agent_1": "P2",
     }
 
     plan_server.start()
@@ -261,15 +267,15 @@ def main():
     time.sleep(0.5)
 
     # Initial tasks
-    server_transport.deliver_task_request("agent_0", "agent_0_task", "2,0")
-    server_transport.deliver_task_request("agent_1", "agent_1_task", "0,0")
+    server_transport.deliver_task_request("agent_0", "agent_0_task", "P2")
+    server_transport.deliver_task_request("agent_1", "agent_1_task", "P0")
 
-    time.sleep(1.5)
+    time.sleep(7.0)
 
     # Replace tasks
     logging.info("Sending replacement tasks...")
-    server_transport.deliver_task_request("agent_0", "agent_0_replace", "1,2")
-    server_transport.deliver_task_request("agent_1", "agent_1_replace", "0,3")
+    server_transport.deliver_task_request("agent_0", "agent_0_replace", "P36")
+    server_transport.deliver_task_request("agent_1", "agent_1_replace", "P68")
 
     logging.info("Waiting for robots to move..")
     time.sleep(60.0)

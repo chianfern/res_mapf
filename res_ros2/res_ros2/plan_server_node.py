@@ -18,6 +18,7 @@
 import logging
 import rclpy
 from rclpy.node import Node
+from res_map.map_data import load_map_data
 from res_mapf_planning.mapf_solve.solvers.cbs_adapter import CBSAdapter
 from res_mapf_planning.planning.mapf_coordinator import MAPFCoordinator
 from res_mapf_planning.planning.multi_agent_context import MultiAgentContext
@@ -35,9 +36,16 @@ class PlanServerNode(Node):
     def __init__(self):
         super().__init__("plan_server")
 
+        self.declare_parameter("lif_path", "")
+        lif_path = self.get_parameter("lif_path").get_parameter_value().string_value
+        if not lif_path:
+            raise ValueError("ROS2 parameter 'lif_path' must be set.")
+
+        map_data = load_map_data(lif_path)
+
         transport = Ros2PlanServerTransport(self)
         context = MultiAgentContext()
-        solver = CBSAdapter()
+        solver = CBSAdapter(map_data)
         coordinator = MAPFCoordinator(context, solver)
         plan_generator = PlanGenerator()
 

@@ -37,6 +37,7 @@ This simulation.py and related urdf files were adapted initially from:
 """
 
 import argparse
+import json
 import math
 import time
 from pathlib import Path
@@ -70,29 +71,19 @@ W_WHEEL_INCREMENT = MAX_W_WHEEL / (TIME_TO_ACCELERATE / dt)
 # -----------------------------
 
 
-def load_building(map_filepath: str) -> Optional[Dict[str, Sequence[float]]]:
+def load_map(map_filepath: str) -> Optional[Dict[str, Sequence[float]]]:
+    print("DEBUG load_building called with:", map_filepath)
     try:
-        vertices: Dict[str, Sequence[float]] = {}
-        with open(map_filepath) as stream:
-            print(f"Loading map {map_filepath}")
-            try:
-                parsed_map = yaml.safe_load(stream)
-            except yaml.YAMLError as exc:
-                print(exc)
-                return None
-
-        if "warehouse" not in parsed_map["levels"]:
-            return vertices
-        if "vertices" not in parsed_map["levels"]["warehouse"]:
-            return vertices
-
-        for item in parsed_map["levels"]["warehouse"]["vertices"]:
-            x = float(item[0])
-            y = float(item[1])
-            vertice_name = item[3]
-            vertices[vertice_name] = [x, y]
+        with open(map_filepath) as f:
+            lif = json.load(f)
+        vertices = {
+            n["node_id"]: [float(n["x"]), float(n["y"])]
+            for n in lif.get("nodes", [])
+        }
+        print(f"Loaded LIF map {map_filepath} with {len(vertices)} nodes.")
         return vertices
     except IOError:
+        print(f"Failed to load LIF map {map_filepath}.")
         return None
 
 
@@ -127,8 +118,8 @@ def main() -> None:
         "--hide-labels", action="store_true", help="Disable debug text."
     )
     parser.add_argument(
-        "--building",
-        help="Path to building.yaml. A correct file must be provided if you want to use named waypoints.",
+        "--map",
+        help="Path to LIF JSON file. Required if you want to use named waypoints.",
     )
     parser.add_argument("--video", action="store_true", help="Records a video.")
 
@@ -151,10 +142,10 @@ def main() -> None:
             return p.addUserDebugText(*wrap_args, **wrap_kwargs)
 
     vertices = None
-    if args.building:
-        vertices = load_building(args.building)
+    if args.map:
+        vertices = load_map(args.map)
         if vertices:
-            print("Loaded building map")
+            print("Loaded map")
             x_max = max([vertices[key][0] for key in vertices])
             x_min = min([vertices[key][0] for key in vertices])
             y_max = max([vertices[key][1] for key in vertices])

@@ -20,6 +20,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Callable, List
 
+from res_map.map_data import MapData
 from res_mapf_planning.mapf_solve.mapf_solver_base import Location
 
 
@@ -33,6 +34,9 @@ class WaypointWithCallback:
 
 class BaseRobotController(ABC):
     """Subclasses must implement enqueue() and shutdown()."""
+
+    def __init__(self, map_data: MapData) -> None:
+        self.map_data = map_data
 
     @abstractmethod
     def enqueue(
