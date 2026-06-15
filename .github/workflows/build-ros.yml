@@ -20,8 +20,8 @@ jobs:
       UPSTREAM_WORKSPACE: 'github:Briancbn/colcon-python-project#devel github:Briancbn/colcon-python-project-uv#main deps.repos'
       ROS_DISTRO: ${{ matrix.distro }}
       ADDITIONAL_DEBS: "python3-tomli python3-tomli-w"
-      AFTER_BUILD_TARGET_WORKSPACE: "rosenv && colcon venv sync"
-      BEFORE_RUN_TARGET_TEST_EMBED: ". install/activate.sh"
+      AFTER_BUILD_TARGET_WORKSPACE: "rosenv && cd ~/target_ws && colcon venv sync"
+      BEFORE_RUN_TARGET_TEST_EMBED: ". ~/target_ws/install/activate.sh"
     runs-on: ubuntu-latest
     container:
       image: ros:${{ matrix.distro }}-ros-core
