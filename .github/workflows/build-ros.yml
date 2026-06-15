@@ -17,8 +17,10 @@ jobs:
         distro: [humble, jazzy]
     env:
       ISOLATION: "shell"
-      UPSTREAM_WORKSPACE: 'github:Briancbn/colcon-python-project#devel github:Briancbn/colcon-python-project-uv#main'
+      UPSTREAM_WORKSPACE: 'github:Briancbn/colcon-python-project#devel github:Briancbn/colcon-python-project-uv#main deps.repos'
       ROS_DISTRO: ${{ matrix.distro }}
+      AFTER_BUILD_TARGET_WORKSPACE: "colcon venv sync"
+      BEFORE_RUN_TARGET_TEST_EMBED: ". install/activate.sh"
     runs-on: ubuntu-latest
     container:
       image: ros:${{ matrix.distro }}-ros-core
@@ -29,6 +31,3 @@ jobs:
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
       - uses: 'ros-industrial/industrial_ci@master'
-        env:
-          AFTER_BUILD_TARGET_WORKSPACE: "colcon venv sync"
-          BEFORE_RUN_TARGET_TEST_EMBED: ". install/activate.sh"
