@@ -1,12 +1,12 @@
 name: ROS2 CI
 
 on:
-  workflow_dispatch:
   pull_request:
   push:
     branches:
       - main
-      - feat/bn/add-gha
+    tags:
+      - '*'
 
 jobs:
   industrial_ci:
