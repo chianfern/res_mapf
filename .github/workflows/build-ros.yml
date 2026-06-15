@@ -6,7 +6,7 @@ on:
   push:
     branches:
       - main
-      - develop
+      - feat/bn/add-gha
 
 jobs:
   industrial_ci:
