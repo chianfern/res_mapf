@@ -18,6 +18,8 @@ repos:
     hooks:
       - id: uv-lock
         stages: [ pre-commit ]
+        files: res_mapf/pyproject.toml
+        args: [--project, res_mapf]
 
   - repo: local
     hooks:

@@ -12,7 +12,7 @@ on:
 
 jobs:
   build:
-    name: continuous-integration
+    name: python
     runs-on: ubuntu-latest
     strategy:
       matrix:
