@@ -73,23 +73,15 @@ def convert(
     all_node_ids = set(map_data.world_positions.keys())
 
     # --- Names padded to uniform width for column alignment in the CSV. ---
-    max_idx = max(
-        int(''.join(filter(str.isdigit, nid)) or 0)
-        for nid in all_node_ids
-    )
-    n_digits = len(str(max_idx))
+    max_len = max(len(nid) for nid in all_node_ids)
 
     def padded_name(node_id: str) -> str:
-        prefix = node_id.rstrip("0123456789")
-        number = node_id[len(prefix):]
-        if number:
-            return f"{prefix}{int(number):0{n_digits}d}"
-        return node_id.ljust(1 + n_digits)
+        return node_id.ljust(max_len)
 
     node_id_to_name: dict[str, str] = {
         nid: padded_name(nid) for nid in all_node_ids
     }
-    cell_width = 1 + n_digits  # e.g. "P01" -> 3, "P001" -> 4
+    cell_width = max_len
 
     # --- Build grid lookup ---
     max_x, max_y = grid.dimension[0] - 1, grid.dimension[1] - 1

@@ -28,7 +28,6 @@ Runs the PyBullet simulation.
 Robots are initialised and then continuously receive commands over the AgentCommand interface,
 responding on completion of each command.
 
-Provide a correct building.yaml to use named waypoints.
 
 This simulation.py and related urdf files were adapted initially from:
     https://github.com/omron-sinicx/PSIPP-CTC/tree/master/tools under the MIT License
@@ -158,8 +157,6 @@ def main() -> None:
     p.setGravity(0, 0, -9.81)
     p.setRealTimeSimulation(0)
 
-    # Initialise debug
-    # colors = plt.get_cmap(name="hsv", lut=number_of_agents + 1)
     # Initialise debug item IDs
     bullet_debug_items = {}
 
@@ -199,18 +196,22 @@ def main() -> None:
     time_end = time.time()
     print(f"Time taken to spawn agents: {time_end - time_start}")
 
-    # set_camera_view(p, num_agents=0, xmin=x_min, xmax=x_max, ymin=y_min, ymax=y_max)
+    # Set camera view at last loaded agent
     set_camera_view(p, camera_target_x, camera_target_y)
 
-    # Always draw the default grid
-    draw_grid(p, 0, 6, 0, 6, 1)  # TODO dynamic grid size and camera view
-
-    # Additionally, draw grid for the loaded building.
+    # Additionally, draw grid for the loaded map.
+    # This can take a long time if the map is large.
     if vertices:
-        draw_grid(
-            p, int(x_min), int(x_max), int(y_min), int(y_max), 10
-        )  # TODO dynamic grid size and camera view
-
+        for node_id, (nx, ny) in vertices.items():
+            # p.addUserDebugText(
+            #     node_id,
+            #     [nx, ny, 0.1]
+            # )
+            p.addUserDebugPoints(
+                [[nx, ny, 0.0]],
+                pointColorsRGB=[[0, 0, 1]],
+                pointSize=5,
+            )
     bullet_debug_items["timestamp"] = wrap_debug_text("", [0, 0, 0])
 
     for agent_name in simulation_agents:

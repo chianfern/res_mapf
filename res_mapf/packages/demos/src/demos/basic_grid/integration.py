@@ -14,7 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import logging
+from pathlib import Path
 import time
 
 from res_map.map_data import load_map_data
@@ -43,9 +45,6 @@ logger = logging.getLogger("direct_transport")
 Wire publishes and subscribes between Plan Server and Plan Executor directly for testing.
 
 """
-
-
-IN_LIF = "warehouse.lif.json"
 
 
 class DirectPlanServerTransport:
@@ -214,13 +213,19 @@ class DirectPlanExecutorTransport:
 
 
 def main():
+
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("lif_file", type=Path, help="Input .lif.json file.")
+    args = parser.parse_args()
+
     logging.basicConfig(
         level=logging.DEBUG,
         format="[%(levelname)s] %(asctime)s %(name)s: %(message)s",
     )
-    map_data = load_map_data(
-        IN_LIF
-    )
+    map_data = load_map_data(args.lif_file)
 
     # --- Transports ---
     server_transport = DirectPlanServerTransport()
@@ -252,8 +257,8 @@ def main():
 
     # --- Register robots ---
     agents = {
-        "agent_0": "P0",
-        "agent_1": "P2",
+        "agent_0": "P_0_0",
+        "agent_1": "P_2_0",
     }
 
     plan_server.start()
@@ -267,15 +272,15 @@ def main():
     time.sleep(0.5)
 
     # Initial tasks
-    server_transport.deliver_task_request("agent_0", "agent_0_task", "P2")
-    server_transport.deliver_task_request("agent_1", "agent_1_task", "P0")
+    server_transport.deliver_task_request("agent_0", "agent_0_task", "P_2_0")
+    server_transport.deliver_task_request("agent_1", "agent_1_task", "P_0_0")
 
     time.sleep(7.0)
 
     # Replace tasks
     logging.info("Sending replacement tasks...")
-    server_transport.deliver_task_request("agent_0", "agent_0_replace", "P36")
-    server_transport.deliver_task_request("agent_1", "agent_1_replace", "P68")
+    server_transport.deliver_task_request("agent_0", "agent_0_replace", "P_0_3")
+    server_transport.deliver_task_request("agent_1", "agent_1_replace", "P_2_2")
 
     logging.info("Waiting for robots to move..")
     time.sleep(60.0)
