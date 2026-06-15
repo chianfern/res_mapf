@@ -13,7 +13,6 @@ dependencies = [
     "networkx<=3.5",
     "numpy<2.0.0",
     "pydantic>=2.12.5",
-    "pytest>=9.0.1",
     "pyyaml>=6.0.3",
     "requests>=2.32.5",
     "shared-memory-dict>=0.7.2",
