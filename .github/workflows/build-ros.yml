@@ -21,7 +21,7 @@ jobs:
       ROS_DISTRO: ${{ matrix.distro }}
       ADDITIONAL_DEBS: "python3-tomli python3-tomli-w"
       AFTER_BUILD_TARGET_WORKSPACE: "rosenv && cd ~/target_ws && colcon venv sync"
-      BEFORE_RUN_TARGET_TEST_EMBED: ". ~/target_ws/install/activate.sh"
+      BEFORE_RUN_TARGET_TEST_EMBED: "ici_with_unset_variables source ~/target_ws/install/activate.sh"
     runs-on: ubuntu-latest
     container:
       image: ros:${{ matrix.distro }}-ros-core
