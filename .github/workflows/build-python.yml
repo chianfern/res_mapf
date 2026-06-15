@@ -1,0 +1,29 @@
+jobs:
+  build:
+    name: continuous-integration
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - "3.10"
+          - "3.11"
+          - "3.12"
+    env:
+      UV_PROJECT: res_mapf
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv and set the Python version
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install the project
+        run: uv sync --all-packages --all-extras --dev
+
+      - name: Run lint
+        run: uv run pre-commit run --all-files
+
+      - name: Run tests
+        run: uv run pytest

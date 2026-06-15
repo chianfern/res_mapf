@@ -319,7 +319,9 @@ def main() -> None:
 
                 state = p.getBasePositionAndOrientation(current_agent.id)
                 position = state[0][:2]
-                quat = quaternion.quaternion(state[1][3], state[1][0], state[1][1], state[1][2])
+                quat = quaternion.quaternion(
+                    state[1][3], state[1][0], state[1][1], state[1][2]
+                )
                 direction = quaternion.rotate_vectors(quat, (1.0, 0.0, 0.0))[:2]
                 targ, targ_id, subsequent_targ, is_goal = (
                     current_controller.get_target()

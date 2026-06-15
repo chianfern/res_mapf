@@ -19,12 +19,14 @@ repos:
       - id: uv-lock
         stages: [ pre-commit ]
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.20.2
+  - repo: local
     hooks:
       - id: mypy
-        stages: [ pre-commit ]
-        args: [ --ignore-missing-imports ]
+        name: "Static type checker"
+        entry: bash -c "cd res_mapf && uv run mypy ."
+        language: system
+        types: [ python ]
+        pass_filenames: false
 
   - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
     rev: v9.23.0
@@ -40,8 +42,12 @@ repos:
         name: "License inserter"
         files: .*py$
         args:
-          - --license-filepath=LICENSE
+          - --license-filepath=license_header.txt
           - --comment-style=#
           - --use-current-year
-        exclude: '(\.npy$|packages/res_mapf_planning/src/res_mapf_planning/cbs|packages/res_pybullet/src/res_pybullet/simulation)' # Do not add license to .npy files (the standard binary file format in NumPy)
+        exclude: |
+          (?x)^(
+            res_mapf/packages/res_mapf_planning/src/res_mapf_planning/cbs/|
+            res_mapf/packages/res_pybullet/src/res_pybullet/simulation/
+          )
         stages: [ pre-commit ]
