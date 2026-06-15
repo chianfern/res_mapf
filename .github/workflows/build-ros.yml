@@ -1,0 +1,34 @@
+name: ROS2 CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  industrial_ci:
+    name: Build and test
+    strategy:
+      fail-fast: false
+      matrix:
+        distro: [humble, jazzy]
+    env:
+      ISOLATION: "shell"
+      UPSTREAM_WORKSPACE: 'github:Briancbn/colcon-python-project#devel github:Briancbn/colcon-python-project-uv#main'
+      ROS_DISTRO: ${{ matrix.distro }}
+    runs-on: ubuntu-latest
+    container:
+      image: ros:${{ matrix.distro }}-ros-core
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+
+      - uses: 'ros-industrial/industrial_ci@master'
+        env:
+          AFTER_BUILD_TARGET_WORKSPACE: "colcon venv sync"
+          BEFORE_RUN_TARGET_TEST_EMBED: ". install/activate.sh"
