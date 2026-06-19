@@ -194,7 +194,7 @@ class Ros2PlanServerTransport(ServerBaseTransport):
 
         pub = self._get_publisher(topic, RosPlan)
 
-        pub.publish(self._to_ros_plan(plan))
+        pub.publish(PlanConversion.to_ros_plan(plan))
 
         self._node.get_logger().debug(f"Published plan for {robot_id} on {topic}")
 
@@ -245,45 +245,6 @@ class Ros2PlanServerTransport(ServerBaseTransport):
             self._node.destroy_subscription(sub)
         self._publishers.clear()
         self._subscribers.clear()
-
-    def _to_ros_plan(self, internal_plan: Plan) -> RosPlan:
-        ros_waypoints = []
-        for w in internal_plan.waypoints:
-            ros_blockers = []
-            for d in w.departure_blockers:
-                ros_blocker = RosTrafficDependency(
-                    name=d.name,
-                    plan_id=RosPlanId(
-                        destination_session=RosUUID(
-                            uuid=list(d.plan_id.destination_session.bytes)
-                        ),
-                        plan_version=d.plan_id.plan_version,
-                    ),
-                    required_progress=d.required_progress,
-                )
-                ros_blockers.append(ros_blocker)
-
-            ros_wp = RosWaypoint(
-                position=list(w.position),
-                progress=w.progress,
-                departure_action=w.departure_action,
-                departure_blockers=ros_blockers,
-            )
-            ros_waypoints.append(ros_wp)
-
-        ros_plan_id = RosPlanId(
-            destination_session=RosUUID(
-                uuid=list(internal_plan.plan_id.destination_session.bytes)
-            ),
-            plan_version=internal_plan.plan_id.plan_version,
-        )
-
-        return RosPlan(
-            plan_id=ros_plan_id,
-            start_time=PlanConversion.to_ros_time(internal_plan.start_time),
-            workflow=internal_plan.workflow,
-            waypoints=ros_waypoints,
-        )
 
     def _get_publisher(self, topic: str, msg_type):
         if topic not in self._publishers:

@@ -76,6 +76,7 @@ class PlanConversion:
     def to_ros_waypoint(wp: Waypoint) -> RosWaypoint:
         return RosWaypoint(
             position=list(wp.position),
+            name=wp.name,
             progress=wp.progress,
             departure_action=wp.departure_action,
             departure_blockers=[
@@ -86,7 +87,7 @@ class PlanConversion:
     @staticmethod
     def from_ros_waypoint(msg: RosWaypoint) -> Waypoint:
         return Waypoint(
-            name=f"{msg.position[0]},{msg.position[1]}",
+            name=msg.name,
             position=tuple(msg.position),
             progress=msg.progress,
             departure_action=msg.departure_action,
@@ -96,19 +97,27 @@ class PlanConversion:
         )
 
     @staticmethod
-    def to_ros_plan(plan: Plan, to_ros_time) -> RosPlan:
+    def to_ros_plan(internal_plan: Plan) -> RosPlan:
+
+        ros_waypoints = []
+        for w in internal_plan.waypoints:
+
+            ros_waypoints.append(PlanConversion.to_ros_waypoint(w))
+
+        ros_plan_id = PlanConversion.to_ros_plan_id(internal_plan.plan_id)
+
         return RosPlan(
-            plan_id=PlanConversion.to_ros_plan_id(plan.plan_id),
-            start_time=to_ros_time(plan.start_time),
-            workflow=plan.workflow,
-            waypoints=[PlanConversion.to_ros_waypoint(w) for w in plan.waypoints],
+            plan_id=ros_plan_id,
+            start_time=PlanConversion.to_ros_time(internal_plan.start_time),
+            workflow=internal_plan.workflow,
+            waypoints=ros_waypoints,
         )
 
     @staticmethod
     def from_ros_plan(msg: RosPlan) -> Plan:
         return Plan(
             plan_id=PlanConversion.from_ros_plan_id(msg.plan_id),
-            start_time=(msg.start_time),
+            start_time=PlanConversion.from_ros_time(msg.start_time),
             workflow=msg.workflow,
             waypoints=[PlanConversion.from_ros_waypoint(w) for w in msg.waypoints],
         )

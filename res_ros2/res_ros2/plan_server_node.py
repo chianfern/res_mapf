@@ -39,7 +39,7 @@ class PlanServerNode(Node):
         self.declare_parameter("lif_path", "")
         lif_path = self.get_parameter("lif_path").get_parameter_value().string_value
         if not lif_path:
-            raise ValueError("ROS2 parameter 'lif_path' must be set.")
+            raise ValueError("ROS 2 parameter 'lif_path' must be set.")
 
         map_data = load_map_data(lif_path)
 

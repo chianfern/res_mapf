@@ -24,6 +24,7 @@ class MapData:
     """
  
     world_positions: Dict[str, Tuple[float, float]] # Mapping from node name to (x, y) real-world coordinates in metres.
+    world_position_to_name: Dict[Tuple[float, float], str]  # Mapping from coordinates to name
     edges: List[Edge]   # Connections between nodes
 
 
@@ -54,6 +55,7 @@ def load_map_data(lif_path: str) -> MapData:
     for node in lif.get("nodes", []):
         node_id = node["node_id"]
         world_positions[node_id] = (float(node["x"]), float(node["y"]))
+    world_position_to_name = {v: k for k, v in world_positions.items()}
  
     if not world_positions:
         raise ValueError(f"{lif_path}: no nodes found.")
@@ -82,6 +84,7 @@ def load_map_data(lif_path: str) -> MapData:
  
     return MapData(
         world_positions=world_positions,
+        world_position_to_name=world_position_to_name,
         edges=edges,
     )
  

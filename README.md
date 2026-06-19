@@ -152,14 +152,14 @@ res_pybullet_sim --named P_0_0 P_2_0 --map src/res_mapf/res_mapf/packages/demos/
 **2. Run the ROS 2 plan server.** In a *project environment*, launch the plan server node:
 
 ```bash
-ros2 run res_ros2 plan_server_node
+ros2 run res_ros2 plan_server_node --ros-args -p lif_path:=src/res_mapf/res_mapf/packages/demos/src/demos/basic_grid/basic_grid.lif.json
 ```
 
 **3. Run the ROS 2 plan executor.** In another *project environment*, launch the plan executor
 node:
 
 ```bash
-ros2 run res_ros2 plan_executor_node
+ros2 run res_ros2 plan_executor_node --ros-args -p lif_path:=src/res_mapf/res_mapf/packages/demos/src/demos/basic_grid/basic_grid.lif.json
 ```
 
 **4. Onboard the robots**

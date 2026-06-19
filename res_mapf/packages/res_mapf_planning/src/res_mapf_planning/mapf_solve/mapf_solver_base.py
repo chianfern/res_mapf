@@ -74,7 +74,7 @@ class MAPFSolverBase(abc.ABC):
     Interface for a MAPF Solver.
     Given agents with start and goal locations and obstacles, find collision-free paths.
 
-    Subclasses receive grid map data at construction, parsed and stored at self.map_data.
+    Subclasses receive map data at construction, stored at self.map_data.
 
     Implementations must:
     1. Create their solver-specific map representation
@@ -93,7 +93,7 @@ class MAPFSolverBase(abc.ABC):
     """
 
     def __init__(self, map_data: MapData) -> None:
-            self.map_data = map_data
+        self.map_data = map_data
 
     @abc.abstractmethod
     def solve(

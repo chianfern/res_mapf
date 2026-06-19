@@ -141,7 +141,7 @@ class CBSAdapter(MAPFSolverBase):
         coord_to_node: Dict[Tuple[int, int], str] = {
             v: k for k, v in self._grid.grid_nodes.items()
         }
-        
+
         plans = []
         for agent_name, agent_path in cbs_output["schedule"].items():
             steps = []
