@@ -152,9 +152,7 @@ class SharedMemoryAgent:
             if location.name in self._map_data.world_positions:
                 x, y = self._map_data.world_positions[location.name]
                 return f"{x},{y}"
-            raise ValueError(
-                f"Named location '{location.name}' not found in map."
-            )
+            raise ValueError(f"Named location '{location.name}' not found in map.")
         return f"{location.x},{location.y}"
 
     def _publish(self) -> None:

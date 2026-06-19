@@ -16,10 +16,9 @@
 
 import abc
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import List
 
-from res_map.map_data import MapData, load_map_data
+from res_map.map_data import MapData
 from res_mapf_planning.mapf_solve.models.models import SolverPlan
 
 

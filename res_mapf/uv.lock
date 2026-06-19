@@ -8,6 +8,8 @@ resolution-markers = [
 
 [manifest]
 members = [
+    "demos",
+    "res-map",
     "res-mapf",
     "res-mapf-planning",
     "res-plan-execution",
@@ -437,6 +439,11 @@ sdist = { url = "https://files.pythonhosted.org/packages/a9/95/a3dbbb5028f35eafb
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e7/05/c19819d5e3d95294a6f5947fb9b9629efb316b96de511b418c53d245aae6/cycler-0.12.1-py3-none-any.whl", hash = "sha256:85cef7cff222d8644161529808465972e51340599459b8ac3ccbac5a854e0d30", size = 8321, upload-time = "2023-10-07T05:32:16.783Z" },
 ]
+
+[[package]]
+name = "demos"
+version = "0.1.0"
+source = { editable = "packages/demos" }
 
 [[package]]
 name = "distlib"
@@ -1467,6 +1474,11 @@ sdist = { url = "https://files.pythonhosted.org/packages/34/64/8860370b167a9721e
 wheels = [
     { url = "https://files.pythonhosted.org/packages/56/5d/c814546c2333ceea4ba42262d8c4d55763003e767fa169adc693bd524478/requests-2.33.0-py3-none-any.whl", hash = "sha256:3324635456fa185245e24865e810cecec7b4caf933d7eb133dcde67d48cee69b", size = 65017, upload-time = "2026-03-25T15:10:40.382Z" },
 ]
+
+[[package]]
+name = "res-map"
+version = "0.1.0"
+source = { editable = "packages/res_map" }
 
 [[package]]
 name = "res-mapf"

@@ -45,11 +45,9 @@ from typing import Any, Optional, Dict, Sequence, Tuple
 import numpy
 import pybullet as p  # type: ignore
 import quaternion  # type: ignore
-import yaml
 from res_pybullet.agent.agent import Agent, AgentCommandInterface, AgentState
 from res_pybullet.utils.pybullet_helpers import (
     check_escape_key,
-    draw_grid,
     set_camera_view,
 )
 
@@ -76,8 +74,7 @@ def load_map(map_filepath: str) -> Optional[Dict[str, Sequence[float]]]:
         with open(map_filepath) as f:
             lif = json.load(f)
         vertices = {
-            n["node_id"]: [float(n["x"]), float(n["y"])]
-            for n in lif.get("nodes", [])
+            n["node_id"]: [float(n["x"]), float(n["y"])] for n in lif.get("nodes", [])
         }
         print(f"Loaded LIF map {map_filepath} with {len(vertices)} nodes.")
         return vertices

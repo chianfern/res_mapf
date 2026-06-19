@@ -1,5 +1,21 @@
 #!/usr/bin/env python3
 
+# Copyright (C) 2026 ROS-Industrial Consortium Asia Pacific
+# Advanced Remanufacturing and Technology Centre
+# A*STAR Research Entities (Co. Registration No. 199702110H)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # TODO: Update to final LIF JSON format.
 """
 Generates a human-friendly grid map displaying obstacles from a LIF JSON file.
@@ -41,11 +57,11 @@ def convert(
     output_path: Path,
     obstacle_node_ids: set[str],
 ) -> None:
-
     # --- Load and parse LIF ---
     map_data = load_map_data(str(lif_path))
     with lif_path.open(encoding="utf-8") as f:
         import json
+
         lif_raw = json.load(f)
     map_id = lif_raw.get("map_info", {}).get("map_id", lif_path.stem)
 
@@ -66,8 +82,7 @@ def convert(
 
     # --- Determine which node_ids are obstacles for the summary. ---
     obstacle_node_set = {
-        nid for nid, cell in grid.grid_nodes.items()
-        if cell in obstacle_cells
+        nid for nid, cell in grid.grid_nodes.items() if cell in obstacle_cells
     }
     auto_obstacles = obstacle_node_set - obstacle_node_ids
     all_node_ids = set(map_data.world_positions.keys())
@@ -78,9 +93,7 @@ def convert(
     def padded_name(node_id: str) -> str:
         return node_id.ljust(max_len)
 
-    node_id_to_name: dict[str, str] = {
-        nid: padded_name(nid) for nid in all_node_ids
-    }
+    node_id_to_name: dict[str, str] = {nid: padded_name(nid) for nid in all_node_ids}
     cell_width = max_len
 
     # --- Build grid lookup ---
@@ -130,14 +143,19 @@ def convert(
     print(f"  Explicit obstacles: {len(obstacle_node_ids)}")
     print(f"  Gaps:               {n_gaps}")
     if auto_obstacles:
-        print(f"  Auto obstacle names: {sorted(node_id_to_name[n] for n in auto_obstacles)}")
+        print(
+            f"  Auto obstacle names: {sorted(node_id_to_name[n] for n in auto_obstacles)}"
+        )
     if obstacle_node_ids:
-        print(f"  Explicit obstacle names: {sorted(node_id_to_name[n] for n in obstacle_node_ids)}")
+        print(
+            f"  Explicit obstacle names: {sorted(node_id_to_name[n] for n in obstacle_node_ids)}"
+        )
 
 
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -147,7 +165,10 @@ def main() -> None:
     parser.add_argument("lif_file", type=Path, help="Input .lif.json file.")
     parser.add_argument("output_file", type=Path, help="Output .csv file to write.")
     parser.add_argument(
-        "--obstacles", nargs="*", default=[], metavar="NODE_ID",
+        "--obstacles",
+        nargs="*",
+        default=[],
+        metavar="NODE_ID",
         help=(
             "node_id(s) to mark as static obstacles, e.g. --obstacles P5 P12. "
             "Use the node_id strings from the LIF file."

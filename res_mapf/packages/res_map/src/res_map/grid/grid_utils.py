@@ -134,9 +134,7 @@ def get_obstacle_cells(
         edge_count[edge.node_a] += 1
         edge_count[edge.node_b] += 1
 
-    auto_obstacles: Set[str] = {
-        nid for nid, count in edge_count.items() if count < 2
-    }
+    auto_obstacles: Set[str] = {nid for nid, count in edge_count.items() if count < 2}
 
     all_obstacles: Set[str] = auto_obstacles | extra_obstacles
 
@@ -146,6 +144,7 @@ def get_obstacle_cells(
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _infer_spacing(positions: List[Tuple[float, float]]) -> float:
     """Infer grid cell size as  of all non-zero coordinate gaps.

@@ -40,11 +40,7 @@ from res_ros2_msgs.msg import TaskStatusUpdate as RosTaskStatusUpdate
 from rmf_prototype_msgs.msg import ParticipantList
 from rmf_prototype_msgs.msg import Plan as RosPlan
 from rmf_prototype_msgs.msg import PlanError as RosPlanError
-from rmf_prototype_msgs.msg import PlanId as RosPlanId
 from rmf_prototype_msgs.msg import Progress as RosProgress
-from rmf_prototype_msgs.msg import TrafficDependency as RosTrafficDependency
-from rmf_prototype_msgs.msg import Waypoint as RosWaypoint
-from unique_identifier_msgs.msg import UUID as RosUUID
 
 from .plan_conversion import PlanConversion
 

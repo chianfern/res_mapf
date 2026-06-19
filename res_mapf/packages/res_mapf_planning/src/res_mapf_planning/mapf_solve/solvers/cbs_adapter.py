@@ -45,23 +45,18 @@ class CBSAdapter(MAPFSolverBase):
     map data.
     """
 
-    def __init__(
-        self,
-        map_data: MapData
-    ) -> None:
+    def __init__(self, map_data: MapData) -> None:
         super().__init__(map_data)
         self._grid: GridMap = snap_to_grid(map_data)
         self._obstacle_cells: List[Tuple[int, int]] = get_obstacle_cells(
             map_data, self._grid
         )
 
-
     def solve(
         self,
         items: Sequence[MAPFAgent],
         input_obstacles: Sequence[Obstacle] = [],
     ) -> Sequence[SolverPlan]:
-
         task_ids = {}  # Track task IDs
         agents: List[AgentContext] = []
 
@@ -78,7 +73,6 @@ class CBSAdapter(MAPFSolverBase):
         for obs in input_obstacles:
             obstacles.append(self._to_cbs_coords(obs.location))
 
-
         print("Agents:", agents)
         print("Number of input obstacles:", len(input_obstacles), flush=True)
         for input_obstacle in input_obstacles:
@@ -91,15 +85,12 @@ class CBSAdapter(MAPFSolverBase):
 
         return plans
 
-
     def _to_cbs_coords(self, location: Location) -> Tuple[int, int]:
         """Resolve a Location to an (x, y) integer grid coordinate tuple."""
         if location.is_named():
             if location.name in self._grid.grid_nodes:
                 return self._grid.grid_nodes[location.name]
-            raise ValueError(
-                f"Named location '{location.name}' not found in map."
-            )
+            raise ValueError(f"Named location '{location.name}' not found in map.")
         if location.is_coordinates():
             return (int(location.x), int(location.y))
         raise ValueError(f"Invalid Location: {location}")
@@ -110,7 +101,6 @@ class CBSAdapter(MAPFSolverBase):
         agents: Sequence[AgentContext],
         obstacles: Sequence[Tuple[int, int]],
     ) -> _CBSOutput:
-
         env = Environment(dimension, agents, obstacles)
         cbs = CBS(env)
         solution = cbs.search()
@@ -126,7 +116,6 @@ class CBSAdapter(MAPFSolverBase):
         #     yaml.safe_dump(output, output_yaml)
 
         return output
-
 
     def _convert_cbs(
         self, cbs_output: _CBSOutput, task_ids: Dict[str, str]
@@ -148,7 +137,9 @@ class CBSAdapter(MAPFSolverBase):
 
             # Create steps.
 
-            for idx in range(len(agent_path) - 1):  # Exclude final waypoint from the loop.
+            for idx in range(
+                len(agent_path) - 1
+            ):  # Exclude final waypoint from the loop.
                 waypoint = agent_path[idx]
                 next_waypoint = agent_path[idx + 1]
 

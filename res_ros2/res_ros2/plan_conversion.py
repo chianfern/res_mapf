@@ -98,10 +98,8 @@ class PlanConversion:
 
     @staticmethod
     def to_ros_plan(internal_plan: Plan) -> RosPlan:
-
         ros_waypoints = []
         for w in internal_plan.waypoints:
-
             ros_waypoints.append(PlanConversion.to_ros_waypoint(w))
 
         ros_plan_id = PlanConversion.to_ros_plan_id(internal_plan.plan_id)
