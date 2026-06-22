@@ -49,7 +49,7 @@ import sys
 from pathlib import Path
 
 from res_map.map_data import load_map_data
-from res_map.grid.grid_utils import get_obstacle_cells, snap_to_grid
+from res_map.grid.grid_utils import infer_obstacles, snap_to_grid
 
 
 def convert(
@@ -76,13 +76,13 @@ def convert(
 
     # --- Snap to grid and derive obstacles ---
     grid = snap_to_grid(map_data)
-    obstacle_cells = set(
-        get_obstacle_cells(map_data, grid, extra_obstacles=obstacle_node_ids)
+    obstacles = set(
+        infer_obstacles(map_data, grid, extra_obstacles=obstacle_node_ids)
     )
 
     # --- Determine which node_ids are obstacles for the summary. ---
     obstacle_node_set = {
-        nid for nid, cell in grid.grid_nodes.items() if cell in obstacle_cells
+        nid for nid, cell in grid.grid_nodes.items() if cell in obstacles
     }
     auto_obstacles = obstacle_node_set - obstacle_node_ids
     all_node_ids = set(map_data.world_positions.keys())
@@ -126,7 +126,7 @@ def convert(
             row_cells = []
             for gx in range(max_x + 1):
                 nid = cell_to_node.get((gx, gy))
-                if nid is None or (gx, gy) in obstacle_cells:
+                if nid is None or (gx, gy) in obstacles:
                     cell = "X".ljust(cell_width)
                 else:
                     cell = node_id_to_name[nid]

@@ -18,6 +18,7 @@
 import logging
 import rclpy
 from rclpy.node import Node
+from res_map.grid.grid_utils import infer_obstacles, snap_to_grid
 from res_map.map_data import load_map_data
 from res_mapf_planning.mapf_solve.solvers.cbs_adapter import CBSAdapter
 from res_mapf_planning.planning.mapf_coordinator import MAPFCoordinator
@@ -42,10 +43,13 @@ class PlanServerNode(Node):
             raise ValueError("ROS 2 parameter 'lif_path' must be set.")
 
         map_data = load_map_data(lif_path)
+        # Convert the map data into a grid map for use by the CBS solver.
+        grid_map = snap_to_grid(map_data)
+        grid_map.obstacles = infer_obstacles(map_data, grid_map)
 
         transport = Ros2PlanServerTransport(self)
         context = MultiAgentContext()
-        solver = CBSAdapter(map_data)
+        solver = CBSAdapter(grid_map)
         coordinator = MAPFCoordinator(context, solver)
         plan_generator = PlanGenerator()
 

@@ -18,7 +18,7 @@ from typing import Dict, List, Sequence, Tuple, TypedDict
 
 
 from res_map.map_data import MapData
-from res_map.grid.grid_utils import GridMap, get_obstacle_cells, snap_to_grid
+from res_map.grid.grid_utils import GridMap, infer_obstacles, snap_to_grid
 from res_mapf_planning.cbs.cbs import CBS, AgentContext, CBSPlan, Environment
 from res_mapf_planning.mapf_solve.exceptions import NoSolutionError
 from res_mapf_planning.mapf_solve.mapf_solver_base import (
@@ -37,20 +37,13 @@ class _CBSOutput(TypedDict):
 
 class CBSAdapter(MAPFSolverBase):
     """Adapter to the cbs solver for local testing.
-    LIF map data accessible at self.map_data
-
-    Fits the map to a grid and determines obstacles.
 
     Named locations (e.g. "P01") are resolved to grid coordinates via the
-    map data.
+    grid map data.
     """
 
-    def __init__(self, map_data: MapData) -> None:
-        super().__init__(map_data)
-        self._grid: GridMap = snap_to_grid(map_data)
-        self._obstacle_cells: List[Tuple[int, int]] = get_obstacle_cells(
-            map_data, self._grid
-        )
+    def __init__(self, grid_map: GridMap) -> None:
+        self._grid_map: GridMap = grid_map
 
     def solve(
         self,
@@ -69,7 +62,7 @@ class CBSAdapter(MAPFSolverBase):
             agents.append(agent)
             task_ids[item.agent_id] = item.task_id if item.task_id else ""
 
-        obstacles: List[Tuple[int, int]] = list(self._obstacle_cells)
+        obstacles: List[Tuple[int, int]] = self._grid_map.obstacles
         for obs in input_obstacles:
             obstacles.append(self._to_cbs_coords(obs.location))
 
@@ -79,7 +72,7 @@ class CBSAdapter(MAPFSolverBase):
             print("input obstacle:", input_obstacle, flush=True)
 
         print("Solving with CBS..", flush=True)
-        output = self._solve_cbs(self._grid.dimension, agents, obstacles)
+        output = self._solve_cbs(self._grid_map.dimension, agents, obstacles)
         plans = self._convert_cbs(output, task_ids)
         print("Solved.", flush=True)
 
@@ -88,8 +81,8 @@ class CBSAdapter(MAPFSolverBase):
     def _to_cbs_coords(self, location: Location) -> Tuple[int, int]:
         """Resolve a Location to an (x, y) integer grid coordinate tuple."""
         if location.is_named():
-            if location.name in self._grid.grid_nodes:
-                return self._grid.grid_nodes[location.name]
+            if location.name in self._grid_map.grid_nodes:
+                return self._grid_map.grid_nodes[location.name]
             raise ValueError(f"Named location '{location.name}' not found in map.")
         if location.is_coordinates():
             return (int(location.x), int(location.y))
@@ -128,7 +121,7 @@ class CBSAdapter(MAPFSolverBase):
         """
 
         coord_to_node: Dict[Tuple[int, int], str] = {
-            v: k for k, v in self._grid.grid_nodes.items()
+            v: k for k, v in self._grid_map.grid_nodes.items()
         }
 
         plans = []

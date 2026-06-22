@@ -73,16 +73,11 @@ class MAPFSolverBase(abc.ABC):
     Interface for a MAPF Solver.
     Given agents with start and goal locations and obstacles, find collision-free paths.
 
-    Subclasses receive map data at construction, stored at self.map_data.
-
-    Implementations must:
-    1. Create their solver-specific map representation
-    2. Determine which nodes to classify as obstacles.
-       For grid-based solvers, res_map.grid_utils provides snap_to_grid() and
-       get_obstacle_cells() as helpers.
-    3. In solve(), merge static map obstacles with the runtime obstacles
+    Implementations should:
+    1. Pass in their solver-specific map representation. For grid-based solvers, res_map.grid_utils provides snap_to_grid() and
+       infer_obstacles() as helpers.
+    2. In solve(), merge static map obstacles with the runtime obstacles
        passed in (e.g. stationary robots).
-
 
     The `task_id` field of each Step must be provided in the Plan object to enable task tracking.
 
@@ -90,9 +85,6 @@ class MAPFSolverBase(abc.ABC):
     SolverConnectionError: if the solver cannot be reached
     NoSolutionFound: if the solver cannot find a solution
     """
-
-    def __init__(self, map_data: MapData) -> None:
-        self.map_data = map_data
 
     @abc.abstractmethod
     def solve(

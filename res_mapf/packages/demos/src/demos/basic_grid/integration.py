@@ -19,6 +19,7 @@ import logging
 from pathlib import Path
 import time
 
+from res_map.grid.grid_utils import infer_obstacles, snap_to_grid
 from res_map.map_data import load_map_data
 from res_mapf_planning.mapf_solve.solvers.cbs_adapter import CBSAdapter
 from res_mapf_planning.planning.mapf_coordinator import MAPFCoordinator
@@ -226,6 +227,10 @@ def main():
     )
     map_data = load_map_data(args.lif_file)
 
+    # Convert the map data into a grid map for use by the CBS solver.
+    grid_map = snap_to_grid(map_data)
+    grid_map.obstacles = infer_obstacles(map_data, grid_map)
+
     # --- Transports ---
     server_transport = DirectPlanServerTransport()
     executor_transport = DirectPlanExecutorTransport()
@@ -233,7 +238,7 @@ def main():
 
     # --- Plan Server ---
     context = MultiAgentContext()
-    solver = CBSAdapter(map_data)
+    solver = CBSAdapter(grid_map)
     coordinator = MAPFCoordinator(context, solver)
     plan_generator = PlanGenerator()
 

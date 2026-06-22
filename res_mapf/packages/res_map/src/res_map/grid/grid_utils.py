@@ -18,26 +18,28 @@
 Utilities for estimating grids.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set, Tuple
 
 from res_map.map_data import MapData
 
 
-@dataclass(frozen=True)
+@dataclass
 class GridMap:
     """
-    Integer grid representation of a map, derived from a MapData.
+    Integer grid representation of a map with named nodes.
 
     Attributes:
         grid_nodes:     Mapping from node name to (x, y) integer grid
                         coordinates. x increases left to right, y increases
                         top to bottom (row 0 = largest y in LIF).
         dimension:      [width, height] of the grid.
+        obstacles:      Nodes that are obstacles.
     """
 
     grid_nodes: Dict[str, Tuple[int, int]]
     dimension: List[int]
+    obstacles: List[Tuple[int, int]] = field(default_factory=list)
 
 
 def snap_to_grid(map_data: MapData) -> GridMap:
@@ -51,7 +53,7 @@ def snap_to_grid(map_data: MapData) -> GridMap:
     between nodes. The origin is shifted so the minimum x maps to column 0
     and the maximum y maps to row 0 (row 0 = top of map).
 
-    This function does NOT determine obstacles. Call get_obstacle_cells()
+    This function does NOT determine obstacles. Call infer_obstacles()
     separately, or implement your own obstacle logic.
 
     Args:
@@ -96,7 +98,7 @@ def snap_to_grid(map_data: MapData) -> GridMap:
     )
 
 
-def get_obstacle_cells(
+def infer_obstacles(
     map_data: MapData,
     grid_map: GridMap,
     extra_obstacles: Optional[Set[str]] = None,
