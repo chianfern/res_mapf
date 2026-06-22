@@ -76,9 +76,7 @@ def convert(
 
     # --- Snap to grid and derive obstacles ---
     grid = snap_to_grid(map_data)
-    obstacles = set(
-        infer_obstacles(map_data, grid, extra_obstacles=obstacle_node_ids)
-    )
+    obstacles = set(infer_obstacles(map_data, grid, extra_obstacles=obstacle_node_ids))
 
     # --- Determine which node_ids are obstacles for the summary. ---
     obstacle_node_set = {

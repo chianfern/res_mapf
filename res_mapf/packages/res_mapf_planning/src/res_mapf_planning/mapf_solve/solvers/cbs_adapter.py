@@ -17,8 +17,7 @@
 from typing import Dict, List, Sequence, Tuple, TypedDict
 
 
-from res_map.map_data import MapData
-from res_map.grid.grid_utils import GridMap, infer_obstacles, snap_to_grid
+from res_map.grid.grid_utils import GridMap
 from res_mapf_planning.cbs.cbs import CBS, AgentContext, CBSPlan, Environment
 from res_mapf_planning.mapf_solve.exceptions import NoSolutionError
 from res_mapf_planning.mapf_solve.mapf_solver_base import (

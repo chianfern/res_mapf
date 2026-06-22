@@ -18,7 +18,6 @@ import abc
 from dataclasses import dataclass
 from typing import List
 
-from res_map.map_data import MapData
 from res_mapf_planning.mapf_solve.models.models import SolverPlan
 
 

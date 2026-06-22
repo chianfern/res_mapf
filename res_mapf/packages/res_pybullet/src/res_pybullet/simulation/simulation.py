@@ -40,7 +40,7 @@ import json
 import math
 import time
 from pathlib import Path
-from typing import Any, Optional, Dict, Sequence, Tuple
+from typing import Any, List, Dict, Optional, Sequence, Tuple
 
 import numpy
 import pybullet as p  # type: ignore
@@ -68,7 +68,7 @@ W_WHEEL_INCREMENT = MAX_W_WHEEL / (TIME_TO_ACCELERATE / dt)
 # -----------------------------
 
 
-def load_map(map_filepath: str) -> Optional[Dict[str, Sequence[float]]]:
+def load_map(map_filepath: str) -> Optional[Dict[str, List[float]]]:
     print("DEBUG load_building called with:", map_filepath)
     try:
         with open(map_filepath) as f:
