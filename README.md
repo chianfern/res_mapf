@@ -131,14 +131,14 @@ source install/activate.sh
 **1. Run the PyBullet simulation.** Start it with the agents' start coordinates:
 
 ```bash
-res_pybullet_sim --named P_0_0 P_2_0 --map src/res_mapf/res_mapf/packages/demos/src/demos/basic_grid/basic_grid.lif.json
+res_pybullet_sim --named P_0_0 P_2_0 --map src/res_mapf/res_mapf/examples/basic_grid/basic_grid.lif.json
 ```
 
-**2. Run the demonstration script.** In the *project environment*, run the integration demo:
+**2. Run the example script.** In the *project environment*, run the example:
 
 ```bash
-cd src/res_mapf/res_mapf/packages/demos/src/demos/basic_grid/
-python3 integration.py basic_grid.lif.json
+cd src/res_mapf/res_mapf/examples/basic_grid
+python3 example.py basic_grid.lif.json
 ```
 
 ### Demonstration with ROS 2 nodes
@@ -146,20 +146,20 @@ python3 integration.py basic_grid.lif.json
 **1. Run the PyBullet simulation.**
 
 ```bash
-res_pybullet_sim --named P_0_0 P_2_0 --map src/res_mapf/res_mapf/packages/demos/src/demos/basic_grid/basic_grid.lif.json
+res_pybullet_sim --named P_0_0 P_2_0 --map src/res_mapf/res_mapf/examples/basic_grid/basic_grid.lif.json
 ```
 
 **2. Run the ROS 2 plan server.** In a *project environment*, launch the plan server node:
 
 ```bash
-ros2 run res_ros2 plan_server_node --ros-args -p lif_path:=src/res_mapf/res_mapf/packages/demos/src/demos/basic_grid/basic_grid.lif.json
+ros2 run res_ros2 plan_server_node --ros-args -p lif_path:=src/res_mapf/res_mapf/examples/basic_grid/basic_grid.lif.json
 ```
 
 **3. Run the ROS 2 plan executor.** In another *project environment*, launch the plan executor
 node:
 
 ```bash
-ros2 run res_ros2 plan_executor_node --ros-args -p lif_path:=src/res_mapf/res_mapf/packages/demos/src/demos/basic_grid/basic_grid.lif.json
+ros2 run res_ros2 plan_executor_node --ros-args -p lif_path:=src/res_mapf/res_mapf/examples/basic_grid/basic_grid.lif.json
 ```
 
 **4. Onboard the robots**
