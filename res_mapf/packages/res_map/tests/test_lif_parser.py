@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -35,7 +36,7 @@ def _write_lif(tmp_path: Path, data: dict, name: str = "test.lif.json") -> Path:
     return path
 
 
-def _minimal_layout(**overrides) -> dict:
+def _minimal_layout(**overrides: Any) -> dict:
     """A minimal valid single-layout LIF document, with optional overrides."""
     layout = {
         "layoutId": "layout-1",
@@ -56,7 +57,7 @@ def _minimal_layout(**overrides) -> dict:
     not SAMPLE_LIF.is_file(),
     reason="tests/fixtures/sample.lif.json not present",
 )
-def test_load_lif_sample_file_parses():
+def test_load_lif_sample_file_parses() -> None:
     map_data = load_lif(SAMPLE_LIF)
     assert isinstance(map_data, MapData)
     assert len(map_data.world_positions) > 0
@@ -68,27 +69,27 @@ def test_load_lif_sample_file_parses():
         assert map_data.world_position_to_name[pos] == node_id
 
 
-def test_load_lif_minimal_valid(tmp_path):
+def test_load_lif_minimal_valid(tmp_path: Path) -> None:
     path = _write_lif(tmp_path, _minimal_layout())
     map_data = load_lif(path)
     assert map_data.world_positions == {"A": (0.0, 0.0), "B": (1.5, 2.5)}
     assert map_data.edges == [Edge(node_a="A", node_b="B")]
 
 
-def test_load_lif_file_not_found(tmp_path):
+def test_load_lif_file_not_found(tmp_path: Path) -> None:
     missing = tmp_path / "does_not_exist.lif.json"
     with pytest.raises(FileNotFoundError, match=str(missing)):
         load_lif(missing)
 
 
-def test_load_lif_invalid_json(tmp_path):
+def test_load_lif_invalid_json(tmp_path: Path) -> None:
     path = tmp_path / "bad.json"
     path.write_text("{not valid json", encoding="utf-8")
     with pytest.raises(ValueError, match="invalid JSON"):
         load_lif(path)
 
 
-def test_load_lif_edge_references_unknown_node(tmp_path):
+def test_load_lif_edge_references_unknown_node(tmp_path: Path) -> None:
     layout = _minimal_layout(
         edges=[{"edgeId": "e1", "startNodeId": "A", "endNodeId": "Z"}]
     )

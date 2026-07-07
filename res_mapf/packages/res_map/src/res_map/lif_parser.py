@@ -59,7 +59,8 @@ def _load_json(path: Path) -> dict:
 
     try:
         with path.open("r", encoding="utf-8") as fp:
-            return json.load(fp)
+            data: dict = json.load(fp)
+            return data
     except json.JSONDecodeError as exc:
         raise ValueError(f"{path}: invalid JSON.") from exc
 
@@ -67,7 +68,7 @@ def _load_json(path: Path) -> dict:
 def _get_layouts(lif: dict, path: Path) -> list[dict]:
     """Return all layouts from a LIF file."""
 
-    layouts = lif.get("layouts")
+    layouts: list[dict] | None = lif.get("layouts")
 
     if not layouts:
         raise ValueError(f"{path}: missing or empty 'layouts'.")

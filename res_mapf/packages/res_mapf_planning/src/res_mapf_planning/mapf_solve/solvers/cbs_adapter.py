@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List, Sequence, Tuple, TypedDict
+from typing import Dict, List, Sequence, Tuple, TypedDict, cast
 
 
 from res_map.grid.grid_utils import GridMap
@@ -110,7 +110,7 @@ class CBSAdapter(MAPFSolverBase):
         """Resolve a Location to an (x, y) integer grid coordinate tuple."""
         if location.is_named():
             if location.name in self._grid_map.grid_nodes:
-                return self._grid_map.grid_nodes[location.name]
+                return cast(Tuple[int, int], self._grid_map.grid_nodes[location.name])
             raise ValueError(f"Named location '{location.name}' not found in map.")
         if location.is_coordinates():
             return (int(location.x), int(location.y))
@@ -139,7 +139,7 @@ class CBSAdapter(MAPFSolverBase):
 
     def _convert_cbs(
         self, cbs_output: _CBSOutput, task_ids: Dict[str, str]
-    ) -> Sequence[SolverPlan]:
+    ) -> List[SolverPlan]:
         """
         Convert output from cbs.py.
 
