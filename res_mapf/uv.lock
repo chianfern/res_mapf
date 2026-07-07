@@ -1580,6 +1580,7 @@ source = { editable = "packages/res_pybullet" }
 dependencies = [
     { name = "numpy-quaternion" },
     { name = "pybullet" },
+    { name = "res-map" },
     { name = "res-mapf-planning" },
 ]
 
@@ -1587,6 +1588,7 @@ dependencies = [
 requires-dist = [
     { name = "numpy-quaternion", specifier = ">=2024.0.13" },
     { name = "pybullet", specifier = ">=3.2.7" },
+    { name = "res-map", editable = "packages/res_map" },
     { name = "res-mapf-planning", editable = "packages/res_mapf_planning" },
 ]
 

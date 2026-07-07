@@ -16,7 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: Update to final LIF JSON format.
 """
 Generates a human-friendly grid map displaying obstacles from a LIF JSON file.
 
@@ -48,7 +47,9 @@ import argparse
 import sys
 from pathlib import Path
 
-from res_map.map_data import load_map_data
+import json
+
+from res_map.lif_parser import load_lif
 from res_map.grid.grid_utils import infer_obstacles, snap_to_grid
 
 
@@ -58,12 +59,11 @@ def convert(
     obstacle_node_ids: set[str],
 ) -> None:
     # --- Load and parse LIF ---
-    map_data = load_map_data(str(lif_path))
+    map_data = load_lif(lif_path)
     with lif_path.open(encoding="utf-8") as f:
-        import json
-
         lif_raw = json.load(f)
-    map_id = lif_raw.get("map_info", {}).get("map_id", lif_path.stem)
+    layouts = lif_raw.get("layouts", [])
+    map_id = layouts[0].get("layoutId", lif_path.stem) if layouts else lif_path.stem
 
     # --- Validate explicit obstacle node_ids ---
     unknown = obstacle_node_ids - set(map_data.world_positions.keys())

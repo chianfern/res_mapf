@@ -17,7 +17,7 @@
 
 import rclpy
 from rclpy.node import Node
-from res_map.map_data import load_map_data
+from res_map.lif_parser import load_lif
 from res_plan_execution.plan_execution.dependency_manager import DependencyManager
 from res_plan_execution.plan_execution.plan_executor import PlanExecutor
 from res_plan_execution.robot_controllers.shared_memory_agent_controller.agent_shmd_controller import (
@@ -35,7 +35,7 @@ class PlanExecutorNode(Node):
         if not lif_path:
             raise ValueError("ROS 2 parameter 'lif_path' must be set.")
 
-        map_data = load_map_data(lif_path)
+        map_data = load_lif(lif_path)
 
         transport = Ros2PlanExecutorTransport(self)
         robot_controller = SharedMemoryAgentController(map_data)

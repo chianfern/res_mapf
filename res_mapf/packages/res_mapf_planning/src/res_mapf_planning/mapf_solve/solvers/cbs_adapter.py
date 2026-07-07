@@ -19,7 +19,11 @@ from typing import Dict, List, Sequence, Tuple, TypedDict
 
 from res_map.grid.grid_utils import GridMap
 from res_mapf_planning.cbs.cbs import CBS, AgentContext, CBSPlan, Environment
-from res_mapf_planning.mapf_solve.exceptions import NoSolutionError
+from res_mapf_planning.mapf_solve.exceptions import (
+    InvalidMapError,
+    NoSolutionFound,
+    UnknownWaypointError,
+)
 from res_mapf_planning.mapf_solve.mapf_solver_base import (
     Location,
     MAPFAgent,
@@ -42,40 +46,65 @@ class CBSAdapter(MAPFSolverBase):
     """
 
     def __init__(self, grid_map: GridMap) -> None:
+        self._validate_map(grid_map)
         self._grid_map: GridMap = grid_map
+
+    def _validate_map(self, grid_map: GridMap) -> None:
+        if not grid_map.grid_nodes:
+            raise InvalidMapError("Grid map contains no nodes.")
 
     def solve(
         self,
-        items: Sequence[MAPFAgent],
-        input_obstacles: Sequence[Obstacle] = [],
-    ) -> Sequence[SolverPlan]:
+        agents: List[MAPFAgent],
+        obstacles: List[Obstacle],
+    ) -> List[SolverPlan]:
+        self._validate_waypoints(agents, obstacles)
+
         task_ids = {}  # Track task IDs
-        agents: List[AgentContext] = []
+        cbs_agents: List[AgentContext] = []
 
-        for item in items:
-            agent: AgentContext = {
-                "start": list(self._to_cbs_coords(item.start)),
-                "goal": list(self._to_cbs_coords(item.goal)),
-                "name": item.agent_id,
+        for agent in agents:
+            cbs_agent: AgentContext = {
+                "start": list(self._to_cbs_coords(agent.start)),
+                "goal": list(self._to_cbs_coords(agent.goal)),
+                "name": agent.agent_id,
             }
-            agents.append(agent)
-            task_ids[item.agent_id] = item.task_id if item.task_id else ""
+            cbs_agents.append(cbs_agent)
+            task_ids[agent.agent_id] = agent.task_id if agent.task_id else ""
 
-        obstacles: List[Tuple[int, int]] = self._grid_map.obstacles
-        for obs in input_obstacles:
-            obstacles.append(self._to_cbs_coords(obs.location))
+        map_obstacles: List[Tuple[int, int]] = list(self._grid_map.obstacles)  # copy
+        for obs in obstacles:
+            map_obstacles.append(self._to_cbs_coords(obs.location))
 
-        print("Agents:", agents)
-        print("Number of input obstacles:", len(input_obstacles), flush=True)
-        for input_obstacle in input_obstacles:
-            print("input obstacle:", input_obstacle, flush=True)
-
-        print("Solving with CBS..", flush=True)
-        output = self._solve_cbs(self._grid_map.dimension, agents, obstacles)
+        output = self._solve_cbs(self._grid_map.dimension, cbs_agents, map_obstacles)
         plans = self._convert_cbs(output, task_ids)
-        print("Solved.", flush=True)
 
         return plans
+
+    def _validate_waypoints(
+        self,
+        agents: List[MAPFAgent],
+        obstacles: List[Obstacle],
+    ) -> None:
+        """Raise if any agent/obstacle references a location not in the map."""
+
+        for agent in agents:
+            self._validate_single_location(agent.start, agent.agent_id)
+            self._validate_single_location(agent.goal, agent.agent_id)
+
+        for obstacle in obstacles:
+            self._validate_single_location(obstacle.location, agent_id=None)
+
+    def _validate_single_location(
+        self, location: Location, agent_id: str | None
+    ) -> None:
+        if not location.is_named():
+            raise UnknownWaypointError(
+                f"CBSAdapter currently only supports named locations, got {location!r}."
+            )
+
+        if location.name not in self._grid_map.grid_nodes:
+            raise UnknownWaypointError(location.name, agent_id=agent_id)
 
     def _to_cbs_coords(self, location: Location) -> Tuple[int, int]:
         """Resolve a Location to an (x, y) integer grid coordinate tuple."""
@@ -97,9 +126,8 @@ class CBSAdapter(MAPFSolverBase):
         cbs = CBS(env)
         solution = cbs.search()
         if not solution:
-            raise NoSolutionError("CBS could not find a valid solution")
+            raise NoSolutionFound("CBS could not find a valid solution")
 
-        # Write to output file
         output: _CBSOutput = {
             "schedule": solution,
             "cost": env.compute_solution_cost(solution),

@@ -19,8 +19,8 @@ import logging
 from pathlib import Path
 import time
 
+from res_map import lif_parser
 from res_map.grid.grid_utils import infer_obstacles, snap_to_grid
-from res_map.map_data import load_map_data
 from res_mapf_planning.mapf_solve.solvers.cbs_adapter import CBSAdapter
 from res_mapf_planning.planning.mapf_coordinator import MAPFCoordinator
 from res_mapf_planning.planning.multi_agent_context import MultiAgentContext
@@ -225,7 +225,7 @@ def main():
         level=logging.DEBUG,
         format="[%(levelname)s] %(asctime)s %(name)s: %(message)s",
     )
-    map_data = load_map_data(args.lif_file)
+    map_data = lif_parser.load_lif(args.lif_file)
 
     # Convert the map data into a grid map for use by the CBS solver.
     grid_map = snap_to_grid(map_data)

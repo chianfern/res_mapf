@@ -21,10 +21,20 @@ class MapfSolverError(Exception):
     pass
 
 
-class NoSolutionError(MapfSolverError):
-    """Raised when no valid solution exists."""
+class NoSolutionFound(MapfSolverError):
+    """Raised when the solver could not find a valid solution."""
 
-    pass
+
+class UnknownWaypointError(MapfSolverError):
+    """Raised when an agent's start/goal references a location not present in the map."""
+
+    def __init__(self, location: str, agent_id: str | None = None):
+        self.location = location
+        self.agent_id = agent_id
+        msg = f"Unknown waypoint '{location}'"
+        if agent_id is not None:
+            msg += f" (referenced by agent '{agent_id}')"
+        super().__init__(msg)
 
 
 class SolverTimeoutError(MapfSolverError):
@@ -33,7 +43,6 @@ class SolverTimeoutError(MapfSolverError):
     pass
 
 
-class InvalidProblemError(MapfSolverError):
-    """Raised when input is invalid."""
-
-    pass
+class InvalidMapError(MapfSolverError):
+    """Raised when the map/layout passed to the solver is structurally invalid
+    (e.g. disconnected graph, no nodes, duplicate/ambiguous coordinates)."""

@@ -23,7 +23,7 @@ from typing import Dict, Iterable, Iterator, Optional, Tuple
 from uuid import uuid4
 
 from res_mapf_planning.mapf_solve.exceptions import MapfSolverError
-from res_mapf_planning.planning.mapf_coordinator import MAPFCoordinator
+from res_mapf_planning.planning.mapf_coordinator import MAPFCoordinator, PlanningError
 from res_mapf_planning.planning.multi_agent_context import MultiAgentContext
 from res_mapf_planning.traffic_dependencies.models.plan import Plan
 from res_mapf_planning.traffic_dependencies.models.plan_id import PlanId
@@ -324,8 +324,8 @@ class PlanServer:
             for task in new_tasks:
                 self._publish_status(task.task_id, task.robot_id, TaskStatus.PLANNED)
 
-        except MapfSolverError as e:
-            self.logger.exception("%e", e)
+        except (MapfSolverError, PlanningError) as e:
+            self.logger.exception("%s", e)
             for task in new_tasks:
                 self._publish_status(
                     task.task_id,

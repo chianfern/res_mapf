@@ -36,7 +36,6 @@ This simulation.py and related urdf files were adapted initially from:
 """
 
 import argparse
-import json
 import math
 import time
 from pathlib import Path
@@ -45,6 +44,7 @@ from typing import Any, List, Dict, Optional, Sequence, Tuple
 import numpy
 import pybullet as p  # type: ignore
 import quaternion  # type: ignore
+from res_map.lif_parser import load_lif
 from res_pybullet.agent.agent import Agent, AgentCommandInterface, AgentState
 from res_pybullet.utils.pybullet_helpers import (
     check_escape_key,
@@ -71,15 +71,14 @@ W_WHEEL_INCREMENT = MAX_W_WHEEL / (TIME_TO_ACCELERATE / dt)
 def load_map(map_filepath: str) -> Optional[Dict[str, List[float]]]:
     print("DEBUG load_building called with:", map_filepath)
     try:
-        with open(map_filepath) as f:
-            lif = json.load(f)
+        map_data = load_lif(map_filepath)
         vertices = {
-            n["node_id"]: [float(n["x"]), float(n["y"])] for n in lif.get("nodes", [])
+            node_id: [x, y] for node_id, (x, y) in map_data.world_positions.items()
         }
         print(f"Loaded LIF map {map_filepath} with {len(vertices)} nodes.")
         return vertices
-    except IOError:
-        print(f"Failed to load LIF map {map_filepath}.")
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"Failed to load LIF map {map_filepath}: {exc}")
         return None
 
 

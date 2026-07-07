@@ -5,12 +5,14 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "res_map",
     "res_mapf_planning",
     "numpy-quaternion>=2024.0.13",
     "pybullet>=3.2.7",
 ]
 
 [tool.uv.sources]
+res_map = { workspace = true }
 res_mapf_planning = { workspace = true }
 
 [project.scripts]
