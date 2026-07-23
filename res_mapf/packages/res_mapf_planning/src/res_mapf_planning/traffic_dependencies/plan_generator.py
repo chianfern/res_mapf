@@ -82,6 +82,7 @@ class PlanGenerator:
                 start_time=None,
                 plan_id=plan_ids[agent_plan.agent_name],
                 workflow="",
+                map_name=agent_plan.map_name,
             )
             self.plans_dict[agent_plan.agent_name] = plan
 

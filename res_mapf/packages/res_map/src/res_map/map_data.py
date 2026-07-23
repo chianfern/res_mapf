@@ -50,3 +50,4 @@ class MapData:
         Tuple[float, float], str
     ]  # Mapping from coordinates to name
     edges: List[Edge]  # Connections between nodes
+    map_name: str = ""  # LIF layoutId.

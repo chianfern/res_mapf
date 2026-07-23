@@ -28,3 +28,4 @@ class Plan:
     start_time: Optional[datetime] = None
     plan_id: Optional[PlanId] = None
     workflow: str = ""
+    map_name: str = ""  # The map (LIF layoutId) this plan's waypoints belong to.

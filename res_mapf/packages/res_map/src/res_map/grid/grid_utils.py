@@ -35,11 +35,13 @@ class GridMap:
                         top to bottom (row 0 = largest y in LIF).
         dimension:      [width, height] of the grid.
         obstacles:      Nodes that are obstacles.
+        map_name:       The map (LIF layoutId) this grid represents.
     """
 
     grid_nodes: Dict[str, Tuple[int, int]]
     dimension: List[int]
     obstacles: List[Tuple[int, int]] = field(default_factory=list)
+    map_name: str = ""
 
 
 def snap_to_grid(map_data: MapData) -> GridMap:
@@ -95,6 +97,7 @@ def snap_to_grid(map_data: MapData) -> GridMap:
     return GridMap(
         grid_nodes=grid_nodes,
         dimension=[max_x + 1, max_y + 1],
+        map_name=map_data.map_name,
     )
 
 

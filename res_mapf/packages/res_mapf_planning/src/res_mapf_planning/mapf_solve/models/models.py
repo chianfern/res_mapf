@@ -46,6 +46,7 @@ class SolverPlan(BaseModel):
 
     agent_name: str
     steps: List[Step]  # Must not be an empty list.
+    map_name: str = ""  # The map (LIF layoutId) this plan was solved on.
 
 
 class Obstacle:

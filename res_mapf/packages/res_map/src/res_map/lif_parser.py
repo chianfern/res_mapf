@@ -79,9 +79,9 @@ def _get_layouts(lif: dict, path: Path) -> list[dict]:
 def _parse_layout(layout: dict, path: Path) -> MapData:
     """Parse a single LIF layout."""
 
-    layout_id = layout.get("layoutId", "<unknown>")
+    layout_id = layout.get("layoutId", "")
 
-    logger.info("Parsing layout '%s'.", layout_id)
+    logger.info("Parsing layout '%s'.", layout_id or "<unknown>")
 
     world_positions = _parse_nodes(layout, path)
     edges = _parse_edges(layout, world_positions, path)
@@ -97,6 +97,7 @@ def _parse_layout(layout: dict, path: Path) -> MapData:
         world_positions=world_positions,
         world_position_to_name={pos: node for node, pos in world_positions.items()},
         edges=edges,
+        map_name=layout_id,
     )
 
 

@@ -183,6 +183,12 @@ class CBSAdapter(MAPFSolverBase):
                         task_id=task_ids[agent_name],
                     )
                 )
-            plans.append(SolverPlan(agent_name=agent_name, steps=steps))
+            plans.append(
+                SolverPlan(
+                    agent_name=agent_name,
+                    steps=steps,
+                    map_name=self._grid_map.map_name,
+                )
+            )
 
         return plans
