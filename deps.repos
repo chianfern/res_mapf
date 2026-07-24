@@ -1,5 +1,5 @@
 repositories:
   next_gen_prototype:
     type: git
-    url: https://github.com/open-rmf/next_gen_prototype.git
+    url: https://github.com/chianfern/next_gen_prototype.git
     version: main

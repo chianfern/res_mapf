@@ -91,7 +91,7 @@ with its dependency, [`next_gen_prototype`](https://github.com/open-rmf/next_gen
 mkdir -p ~/res_ws/src
 cd ~/res_ws
 git clone https://github.com/ros-industrial/res_mapf.git src/res_mapf
-git clone https://github.com/open-rmf/next_gen_prototype.git src/next_gen_prototype
+git clone https://github.com/chianfern/next_gen_prototype.git src/next_gen_prototype
 ```
 
 **4. Install system dependencies.** Use rosdep to install any remaining dependencies
