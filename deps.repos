@@ -2,4 +2,4 @@ repositories:
   next_gen_prototype:
     type: git
     url: https://github.com/open-rmf/next_gen_prototype.git
-    version: main
+    version: 5bba0dd4d823a1e6ae7f101316f256ec358989ba
