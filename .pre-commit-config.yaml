@@ -25,7 +25,7 @@ repos:
     hooks:
       - id: mypy
         name: "Static type checker"
-        entry: bash -c "cd res_mapf && uv run mypy ."
+        entry: bash -c "cd res_mapf && uv run --project mypy ."
         language: system
         types: [ python ]
         pass_filenames: false
