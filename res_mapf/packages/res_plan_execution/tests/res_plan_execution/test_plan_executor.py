@@ -153,9 +153,9 @@ def test_handle_error_reports_failed_plans_id_not_a_cleared_one() -> None:
     assert error_msg.error_code == PlanErrorCode.PATH_BLOCKED
     assert error_msg.details == "obstacle detected on path"
 
-    # on_plan_failed must still have run: the robot's plan is cleared so other
-    # robots stay blocked on it until a replan arrives.
-    assert dm.get_plan_state("robot_0").plan is None
+    # on_plan_failed must still have run: the robot is removed from active tracking
+    # so compute_commit_cut and dispatch no longer iterate it.
+    assert dm.get_plan_state("robot_0") is None
 
 
 def test_handle_error_publishes_failed_task_status() -> None:

@@ -56,6 +56,10 @@ class DependencyManager:
         # Blockers referencing completed plan IDs are considered satisfied.
         self._completed_plan_ids: set[PlanId] = set()  # TODO clean up
 
+        # Track Plan IDs that failed. Used to skip the assert in _extend_commit_cut_for
+        # when other robots still hold blockers referencing a removed robot's plan.
+        self._failed_plan_ids: set[PlanId] = set()
+
         self._cut_indices: dict[str, int] | None = None
 
     def set_plan(self, robot_id: str, plan: Plan) -> None:
@@ -304,6 +308,9 @@ class DependencyManager:
         if departure_blocker.plan_id in self._completed_plan_ids:
             return None
 
+        if departure_blocker.plan_id in self._failed_plan_ids:
+            return None
+
         state = self._robots.get(departure_blocker.name)
 
         assert state is not None, (
@@ -389,9 +396,17 @@ class DependencyManager:
             self._completed_plan_ids.add(state.plan.plan_id)
 
     def on_plan_failed(self, robot_id: str) -> None:
-        """Clears the robot's plan. Does not mark as completed. Other robots
-        blocked on this plan will remain blocked.
+        """Removes the robot from active tracking and records its plan ID as failed.
+
+        Removing from _robots means all existing callers that check `if state is None`
+        handle the failed robot correctly without any additional null-plan guards.
+        _failed_plan_ids prevents the assert in _extend_commit_cut_for from firing
+        when other robots still hold departure blockers referencing this plan.
         """
-        state = self._robots.get(robot_id)
-        if state is not None and state.plan.plan_id is not None:
-            state.plan = None
+        state = self._robots.pop(robot_id, None)
+        if (
+            state is not None
+            and state.plan is not None
+            and state.plan.plan_id is not None
+        ):
+            self._failed_plan_ids.add(state.plan.plan_id)
