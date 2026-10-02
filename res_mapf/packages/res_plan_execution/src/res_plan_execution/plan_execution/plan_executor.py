@@ -189,10 +189,10 @@ class PlanExecutor:
             waypoints_with_callbacks = [
                 WaypointWithCallback(
                     location=Location(name=wp.name, x=wp.position[0], y=wp.position[1]),
-                    on_reached=self._make_reached_callback(robot_id, i),
+                    on_reached=self._make_reached_callback(robot_id, wp_idx),
                     task_id=task_id,
                 )
-                for i, wp in waypoints
+                for wp_idx, wp in waypoints
             ]
             self._robot_controller.enqueue(robot_id, waypoints_with_callbacks)
 
@@ -204,7 +204,7 @@ class PlanExecutor:
         existing_plan_state = self._dm.get_plan_state(robot_id)
 
         if existing_plan_state is None or self._dm.is_complete(robot_id):
-            # This is the first plan
+            # This is the first plan, no further completions from previous plan are expected to arrive.
             self._dm.set_plan(robot_id, plan)
 
         elif (

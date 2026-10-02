@@ -73,7 +73,7 @@ class DependencyManager:
 
     def update_plan_after_cut(self, robot_id: str, new_plan: Plan) -> None:
         """
-        Retains waypoints before the commit cut.
+        Retains waypoints up to and including the commit cut.
         Replace waypoints after cut with new_plan's waypoints.
         Updates plan_id.
         Clear cut index.
@@ -133,6 +133,7 @@ class DependencyManager:
         """Get waypoints that can be enqueued, and marks them as enqueued.
         A waypoint can be enqueued safely when its preceding waypoint has its departure blockers (due to other robots) satisfied,
         and is included in the commit.
+        First waypoint of initial Plan is the start location and does not need to be enqueued.
 
         Args:
             robot_id (str): _description_
@@ -147,10 +148,11 @@ class DependencyManager:
 
         waypoints = state.plan.waypoints
 
-        # Don't enqueue beyond the commit
+        # Don't enqueue beyond the commit.
+        # This function might be called after a commit cut is determined, but before a new plan arrives.
         upper_bound = len(waypoints) - 1
         if state.cut_index is not None:
-            upper_bound = state.cut_index
+            upper_bound = state.cut_index   # inclusive upper bound
 
         valid = []
 
