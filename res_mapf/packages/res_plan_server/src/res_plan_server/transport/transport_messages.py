@@ -56,6 +56,7 @@ class CommittedLocationsResponseMsg:
     request_id: str
     committed_locations: list[CommittedLocationMsg] = field(default_factory=list)
     stationary_agents: list[str] = field(default_factory=list)
+    possible_obstacle_locations: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -82,6 +83,9 @@ class PlanErrorCode(IntEnum):
     # The robot or infrastructure are not compatible with one of the actions in the
     # plan. This indicates that the system is misconfigured.
     INCOMPATIBLE_ACTION = 2004
+
+    # The robot was not ready to accept the initial waypoints it was given.
+    ROBOT_NOT_READY = 2005
 
 
 @dataclass(frozen=True)

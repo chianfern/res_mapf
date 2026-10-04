@@ -271,7 +271,7 @@ class PlanServer:
                 new_tasks=new_tasks,
                 committed_locations=committed_locations,
                 stationary_agents=stationary_robots,
-                obstacles=[],
+                obstacles=list(response.possible_obstacle_locations),
             )
 
             self.logger.debug("Solver plans: %s", solver_plans)

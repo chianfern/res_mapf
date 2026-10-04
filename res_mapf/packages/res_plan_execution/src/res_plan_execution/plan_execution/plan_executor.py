@@ -22,7 +22,10 @@ from typing import Callable, Optional
 from res_mapf_planning.mapf_solve.mapf_solver_base import Location
 from res_mapf_planning.traffic_dependencies.models.plan import Plan
 from res_mapf_planning.traffic_dependencies.models.plan_id import PlanId
-from res_plan_execution.plan_execution.dependency_manager import DependencyManager
+from res_plan_execution.plan_execution.dependency_manager import (
+    DependencyManager,
+    DispatchedWaypoint,
+)
 from res_plan_execution.plan_execution.transport.executor_base_transport import (
     ExecutorBaseTransport,
 )
@@ -147,8 +150,8 @@ class PlanExecutor:
                 self._handle_plan(robot_id, plan)
 
             elif msg_type == "waypoint_reached":
-                _, robot_id, waypoint_index = msg
-                self._handle_waypoint_reached(robot_id, waypoint_index)
+                _, robot_id, dispatched = msg
+                self._handle_waypoint_reached(robot_id, dispatched)
 
             elif msg_type == "committed_locations_request":
                 _, request_id = msg
@@ -172,50 +175,52 @@ class PlanExecutor:
         logger.info("PlanExecutor loop stopped")
 
     def _make_reached_callback(
-        self, robot_id: str, waypoint_index: int
+        self, robot_id: str, dispatched: DispatchedWaypoint
     ) -> Callable[[], None]:
         def _on_reached() -> None:
-            self._message_queue.put(("waypoint_reached", robot_id, waypoint_index))
+            self._message_queue.put(("waypoint_reached", robot_id, dispatched))
 
         return _on_reached
 
     def _dispatch_unblocked(self) -> None:
         for robot_id in self._dm.get_robots():  # TODO Pause/resume
-            waypoints = self._dm.get_valid_waypoints_and_advance(robot_id)
-            if not waypoints:
+            dispatched = self._dm.get_valid_waypoints_and_advance(robot_id)
+            if not dispatched:
                 continue
 
-            task_id = self._dm.get_task_id(robot_id) or ""
             waypoints_with_callbacks = [
                 WaypointWithCallback(
-                    location=Location(name=wp.name, x=wp.position[0], y=wp.position[1]),
-                    on_reached=self._make_reached_callback(robot_id, wp_idx),
-                    task_id=task_id,
+                    location=Location(name=d.waypoint.name, x=d.waypoint.position[0], y=d.waypoint.position[1]),
+                    on_reached=self._make_reached_callback(robot_id, d),
+                    task_id=str(d.plan_id.destination_session),
                 )
-                for wp_idx, wp in waypoints
+                for d in dispatched
             ]
             self._robot_controller.enqueue(robot_id, waypoints_with_callbacks)
 
-            dispatched = [(i, wp.name) for i, wp in waypoints]
-            logger.info("Dispatched to %s: %s", robot_id, dispatched)
+            logger.info(
+                "Dispatched to %s: %s",
+                robot_id,
+                [(d.index, d.waypoint.name) for d in dispatched],
+            )
 
     def _handle_plan(self, robot_id: str, plan: Plan) -> None:
         logger.info("Handling plan for %s", robot_id)
-        existing_plan_state = self._dm.get_plan_state(robot_id)
+        existing_ledger = self._dm.get_ledger(robot_id)
 
-        if existing_plan_state is None or self._dm.is_complete(robot_id):
+        if existing_ledger is None or self._dm.is_complete(robot_id):
             # This is the first plan, no further completions from previous plan are expected to arrive.
             self._dm.set_plan(robot_id, plan)
 
         elif (
-            existing_plan_state.plan.plan_id.destination_session
+            existing_ledger.plan_entries[-1].plan_id.destination_session
             == plan.plan_id.destination_session
         ):
             self._dm.update_plan_after_cut(robot_id, plan)
             logger.info(
                 "Robot %s plan updated: version %d to %d",
                 robot_id,
-                existing_plan_state.plan.plan_id.plan_version,
+                existing_ledger.plan_entries[-1].plan_id.plan_version,
                 plan.plan_id.plan_version,
             )
 
@@ -224,14 +229,14 @@ class PlanExecutor:
                 "Robot %s received new session %s while executing session %s",
                 robot_id,
                 plan.plan_id.destination_session,
-                existing_plan_state.plan.plan_id.destination_session,
+                existing_ledger.plan_entries[-1].plan_id.destination_session,
             )
 
             # New plan received before previous plan was completed.
             self._dm.update_plan_after_cut(robot_id, plan)
 
             self._publish_task_status(
-                plan.plan_id.destination_session,
+                str(plan.plan_id.destination_session),
                 robot_id,
                 TaskStatus.SUPERSEDED,
                 reason="A new session was received while executing the current one.",
@@ -239,16 +244,30 @@ class PlanExecutor:
 
         self._dispatch_unblocked()
 
-    def _handle_waypoint_reached(self, robot_id: str, waypoint_index: int) -> None:
+    def _handle_waypoint_reached(
+        self, robot_id: str, dispatched: DispatchedWaypoint
+    ) -> None:
         # TODO: actions
         # TODO: session completion and plan versioning
-        logger.debug("%s reached waypoint %d", robot_id, waypoint_index)
+        logger.debug(
+            "%s reached waypoint %d of plan %s",
+            robot_id,
+            dispatched.index,
+            dispatched.plan_id,
+        )
 
-        self._dm.update_progress(robot_id, waypoint_index)
+        if not self._dm.update_progress(robot_id, dispatched):
+            logger.warning(
+                "Ignoring stale or invalid progress report for %s: %s",
+                robot_id,
+                dispatched,
+            )
+            return
+
         self._publish_progress(robot_id)
 
         if self._dm.is_complete(robot_id):
-            self._on_task_complete(robot_id)
+            self._on_plan_complete(robot_id)
 
         self._dispatch_unblocked()
 
@@ -259,6 +278,7 @@ class PlanExecutor:
             request_id=request_id,
             committed_locations=list(commit_cut.committed_locations.values()),
             stationary_agents=commit_cut.stationary_robots,
+            possible_obstacle_locations=commit_cut.possible_obstacle_locations,
         )
 
         self._transport.publish_committed_locations_response(msg)
@@ -273,11 +293,19 @@ class PlanExecutor:
     def _handle_error(
         self, robot_id: str, error_code: PlanErrorCode, reason: str
     ) -> None:
-        state = self._dm.get_plan_state(robot_id)
-        task_id = self._dm.get_task_id(robot_id)
-        plan_id = state.plan.plan_id if state is not None else None
+        ledger = self._dm.get_ledger(robot_id)
+        plan_id = (
+            ledger.plan_entries[-1].plan_id
+            if ledger is not None and ledger.plan_entries
+            else None
+        )
+        task_id = self._dm.get_current_destination_session(robot_id)
 
-        self._dm.on_plan_failed(robot_id)
+        if error_code == PlanErrorCode.ROBOT_NOT_READY:
+            self._dm.on_enqueue_rejected(robot_id)
+        elif plan_id is not None:
+            self._dm.on_plan_failed(robot_id, plan_id)
+
         self._publish_task_status(task_id, robot_id, TaskStatus.FAILED, reason=reason)
 
         if plan_id is not None:
@@ -291,34 +319,42 @@ class PlanExecutor:
             )
         logger.error("Robot %s error: %s", robot_id, reason)
 
-    # Task completion
-    def _on_task_complete(self, robot_id: str) -> None:
+    # Plan completion
+    def _on_plan_complete(self, robot_id: str) -> None:
         # Plan / task completion is recorded at the Plan Server
-        task_id = self._dm.get_task_id(robot_id)
-        self._dm.on_plan_complete(robot_id)
-        logger.info("Robot %s completed plan %s", robot_id, task_id)
+        ledger = self._dm.get_ledger(robot_id)
+        if ledger is None or not ledger.plan_entries:
+            return
+        plan_id = ledger.plan_entries[-1].plan_id
+        self._dm.on_plan_complete(robot_id, plan_id)
+        logger.info(
+            "Robot %s completed plan %s (task %s)",
+            robot_id,
+            plan_id,
+            plan_id.destination_session,
+        )
 
     # Publishing
 
     def _publish_progress(self, robot_id: str) -> None:
-        state = self._dm.get_plan_state(robot_id)
-        if state is None:
-            logger.debug("No plan state for %s", robot_id)
+        progress = self._dm.get_progress(robot_id)
+        if progress is None:
+            logger.debug("No progress for %s", robot_id)
             return
         logger.debug("Publishing progress for %s", robot_id)
         self._transport.publish_progress(
             robot_id,
             PlanProgressMsg(
-                plan_id=_to_plan_id_msg(state.plan.plan_id),
-                reached_waypoint=state.current_waypoint,
-                target_waypoint=state.latest_enqueued,
+                plan_id=_to_plan_id_msg(progress.plan_id),
+                reached_waypoint=progress.reached_index,
+                target_waypoint=progress.target_index,
             ),
         )
 
     def _publish_robot_task_status(
         self, robot_id: str, status: TaskStatus, reason: Optional[str] = None
     ) -> None:
-        task_id = self._dm.get_task_id(robot_id)
+        task_id = self._dm.get_current_destination_session(robot_id)
         try:
             self._transport.publish_task_status(
                 TaskStatusUpdate(
