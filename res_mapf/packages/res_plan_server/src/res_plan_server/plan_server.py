@@ -454,12 +454,13 @@ class PlanServer:
                 self._publish_status(task_id, robot_id, TaskStatus.COMPLETED)
 
     def _on_plan_error(self, robot_id: str, plan_error_msg: PlanErrorMsg) -> None:
-        """ """
         task_id = None
+        plan_id = None
         with self._lock:
             for tid, pid in list(self._task_id_to_plan_id.items()):
                 if pid in self._plan_final_waypoints:
                     task_id = tid
+                    plan_id = pid
                     self._plan_final_waypoints.pop(pid, None)
                     self._task_id_to_plan_id.pop(tid, None)
                     break
@@ -471,7 +472,7 @@ class PlanServer:
                 task_id,
                 plan_error_msg.details,
             )
-            self.context.on_failed(robot_id, task_id)
+            self.context.on_failed(robot_id, plan_id)
             self._publish_status(
                 task_id=task_id,
                 robot_id=robot_id,
