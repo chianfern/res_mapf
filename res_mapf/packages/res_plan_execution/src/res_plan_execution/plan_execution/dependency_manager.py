@@ -343,6 +343,7 @@ class DependencyManager:
         Computes committed locations without truncating current plans.
         Returns committed waypoints and stationary robots.
         Ensures that the last-enqueued vertex is included.
+        TODO: add desired vertices concept
         """
 
         cut_indices = self._compute_commit_cut(self._robot_ledgers)
@@ -374,25 +375,23 @@ class DependencyManager:
         previous_extended: set[str] = set()
         changed = True
 
-        # Extend the commit cut to satisfy the departure blockers that block any committed waypoints
+        # Extend the commit cut to ensure all committed waypoints can be completed, by including additional waypoints to satisfy departure blockers.
         while changed:  # Extending the commit cut may result in new departure blockers that require further extension of the commit cut
             changed = False
             current_extended: set[str] = set()
 
             for robot_id, ledger in ledgers.items():
-                for i in range(ledger.current_waypoint, commit_cut[robot_id] + 1):
+                for i in range(ledger.current_waypoint, commit_cut[robot_id]):
                     for blocker in ledger.waypoints[i].departure_blockers:
-                        required_idx = self._extend_commit_cut_for(ledgers, blocker)
+                        required_wp_idx = self._extend_commit_cut_for(ledgers, blocker)
 
                         # Extend the commit cut to match this blocker.
                         # Track extensions to avoid cycles
                         if (
-                            required_idx is not None
-                            and blocker.name in commit_cut
-                            and required_idx > commit_cut[blocker.name]
-                            and not ledgers[blocker.name].execution_failed
+                            required_wp_idx is not None
+                            and required_wp_idx > commit_cut[blocker.name]
                         ):
-                            commit_cut[blocker.name] = required_idx
+                            commit_cut[blocker.name] = required_wp_idx
                             current_extended.add(blocker.name)
                             changed = True
 
