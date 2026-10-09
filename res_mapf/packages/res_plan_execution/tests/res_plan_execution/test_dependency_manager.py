@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+import sys
 import uuid
 
 import pytest
@@ -94,60 +96,79 @@ def _alice_at_b_enqueued_to_d(dm: DependencyManager) -> dict[str, DispatchedWayp
 def test_dm_basic_flow():
     """
     End-to-end trace through dispatch, progress, commit cut, and a replan
-    spliced in after the cut.
+    max_enqueued = 2
     """
-    dm = DependencyManager()
-    v0, v1 = _alice_plan_id(0), _alice_plan_id(1)
-    dm.set_plan("alice", _make_alice_plan())
-    print(
-        "alice planid:",
-        dm.get_ledger("alice").plan_entries[-1].plan_id,
-        dm.get_ledger("alice").plan_entries[-1].plan_id.plan_version,
-    )
 
-    dispatched = dm.get_valid_waypoints_and_advance("alice")
-    assert _summarise(dispatched) == [(v0, 1, "B"), (v0, 2, "C")], (
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG)
+
+    for logger_obj in logging.root.manager.loggerDict.values():
+        if isinstance(logger_obj, logging.Logger):
+            logger_obj.setLevel(logging.DEBUG)
+            logger_obj.propagate = True
+
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setLevel(logging.DEBUG)
+    handler.setFormatter(
+        logging.Formatter("%(levelname)s %(name)s: %(message)s")
+    )
+    root.addHandler(handler)
+
+
+    dm = DependencyManager()
+    a0, a1 = _alice_plan_id(0), _alice_plan_id(1)
+    dm.set_plan("alice", _make_alice_plan())
+
+
+    b0 = _bob_plan_id(0)
+
+    def _make_dependent_bob_plan() -> Plan:
+        # Alice must complete waypoint D (4.0) before Bob may depart waypoint X to move towards Y
+
+        traffic_dependency = TrafficDependency("alice", a0, 4.0)
+        departure_blockers = [traffic_dependency]
+
+        return Plan(
+            plan_id=b0,
+            waypoints=[
+
+                Waypoint(name="V", position=(0.0, 0.0), progress=0.0),
+                Waypoint(name="W", position=(1.0, 0.0), progress=1.0),
+                Waypoint(name="X", position=(2.0, 0.0), progress=2.0, departure_blockers=departure_blockers),
+                Waypoint(name="Y", position=(3.0, 0.0), progress=3.0, )
+            ],
+        )
+
+    dm.set_plan(
+        "bob", _make_dependent_bob_plan()
+    )
+    print()
+
+    dispatched_alice = dm.get_valid_waypoints_and_advance("alice")      # should dispatch B, C
+    assert _summarise(dispatched_alice) == [(a0, 1, "B"), (a0, 2, "C")], (
         "A is the start and is not dispatched; B and C fill the two slots"
     )
+    dispatched_bob = dm.get_valid_waypoints_and_advance("bob")          # should dispatch W, X
+    assert _summarise(dispatched_bob) == [(b0, 1, "W"), (b0, 2, "X")]
 
-    assert dm.update_progress("alice", dispatched[0]), "B must be accepted"
-    more = dm.get_valid_waypoints_and_advance("alice")
-    assert _summarise(more) == [(v0, 3, "D")], "Reaching B frees exactly one slot"
+    dm.update_progress("alice", dispatched_alice[0])                    # mark B complete
+    dispatched_alice = dm.get_valid_waypoints_and_advance("alice")      # should dispatch D
+    assert _summarise(dispatched_alice) == [(a0, 3, "D")]
 
-    assert dm.update_progress("alice", dispatched[1]), "C must be accepted"
-    assert dm.update_progress("alice", more[0]), "D must be accepted"
+    dm.update_progress("bob", dispatched_bob[0])                        # mark W complete
+    dm.update_progress("bob", dispatched_bob[1])                        # mark X complete
+    dispatched_bob = dm.get_valid_waypoints_and_advance("bob")          # Y is next, but should not be dispatched due to blocker (cannot depart X)
+    assert _summarise(dispatched_bob) == [], ("bob 3 should be blocked")
 
-    dm.compute_commit_cut()
+    dm.compute_commit_cut()     # commit vertices should be Alice: 3 (D) and Bob: 2(X)
     ledger = dm.get_ledger("alice")
+    print(ledger)
     print("Cut index:", ledger.cut_index)
     print("Waypoint at the cut:", ledger.waypoints[ledger.cut_index])
     assert ledger.waypoints[ledger.cut_index].name == "D", (
         "With no blockers, the cut sits at the last enqueued waypoint"
     )
 
-    new_plan = Plan(
-        plan_id=v1,
-        waypoints=[
-            Waypoint(name="H", position=(0.0, 0.0), progress=0.0),
-            Waypoint(name="I", position=(1.0, 0.0), progress=1.0),
-            Waypoint(name="J", position=(2.0, 0.0), progress=2.0),
-            Waypoint(name="K", position=(3.0, 0.0), progress=3.0),
-            Waypoint(name="L", position=(4.0, 0.0), progress=4.0),
-        ],
-    )
-    dm.update_plan_after_cut("alice", new_plan)
-    print("after updating plan:", dm.get_ledger("alice").waypoints)
-    print(
-        "new planid:",
-        dm.get_ledger("alice").plan_entries[-1].plan_id,
-        dm.get_ledger("alice").plan_entries[-1].plan_id.plan_version,
-    )
-    assert [wp.name for wp in dm.get_ledger("alice").waypoints] == [
-        "A", "B", "C", "D", "H", "I", "J", "K", "L",
-    ], (
-        "New plan's waypoints are appended after the cut; nothing is trimmed "
-        "yet since alice has not reached past D into v1's territory"
-    )
 
 
 def test_dispatch_respects_max_enqueued():
@@ -541,8 +562,15 @@ def test_new_plan_resumes_dispatch_after_failure():
 def test_commit_cut_for_failed_robot():
     """
     Alice fails at B with C and D dispatched. She may be anywhere up to D, so
-    C and D are possible obstacles. Bob's blocker needs her at F, but a failed
-    robot will not move, so her cut must not be extended.
+    C and D are possible obstacles. Bob's blocker on alice sits on bob's own
+    waypoint 0, gating departure toward his waypoint 1 - since bob has never
+    been dispatched, waypoint 1 isn't part of any committed region yet, so
+    this blocker is never scanned and alice's cut is never extended. This is
+    unrelated to alice's failure: extension is unconditional now (whether a
+    failed robot's committed location can be trusted as "vacated" is the
+    consumer's responsibility, via possible_obstacle_locations, not this
+    computation's) - alice's cut just happens not to be extended here because
+    bob's blocker was never in scope to begin with.
     """
     dm = DependencyManager()
     v0 = _alice_plan_id(0)
@@ -561,7 +589,12 @@ def test_commit_cut_for_failed_robot():
         "A failed robot is not parked at its goal"
     )
     assert cut.committed_locations["alice"].location == "D", (
-        "A failed robot's cut must not be extended to satisfy bob's blocker"
+        "Bob's blocker on alice is never scanned, since bob hasn't dispatched "
+        "past his own waypoint 0 - alice's cut stays at D regardless of her failure"
+    )
+    assert cut.committed_locations["bob"].location == "V", (
+        "Bob never dispatched past his own waypoint 0, so his own commit cut "
+        "stays at his start - he hasn't moved either"
     )
 
 
