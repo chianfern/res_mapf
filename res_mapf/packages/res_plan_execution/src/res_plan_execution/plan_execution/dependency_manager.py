@@ -107,30 +107,59 @@ class DependencyManager:
         Retains waypoints up to and including the commit cut.
         Appends new_plan's waypoints as a new ledger entry.
         Clears cut index.
+        Drops finished plans from the ledger
         """
         ledger = self._robot_ledgers[robot_id]
 
         cut_idx = (
             ledger.cut_index if ledger.cut_index is not None else ledger.latest_enqueued
         )
-        ledger.cut_index = None  # clear the previous cut
+        ledger.cut_index = None  # clear the previous cut index
 
-        retained = ledger.waypoints[: cut_idx + 1]
+        retained = ledger.waypoints[: cut_idx + 1]  # remove waypoints after the cut index.
         new_waypoints = list(new_plan.waypoints)
 
         # new_plan's waypoint 0 is expected to be the the same location as the previous plan's last-committed.
-        # otherwise right after it.
         array_offset = cut_idx + 1
         if new_waypoints[0].name == retained[-1].name:
-            # Transfer blockers before removing the duplicate.
-            retained[-1].departure_blockers.extend(new_waypoints[0].departure_blockers)
+            logger.debug(
+                "Robot %s: new plan's waypoint 0 (%s) is the same location as "
+                "the retained cut waypoint - deduplicating.",
+                robot_id,
+                new_waypoints[0].name,
+            )
+            # The blockers on the final waypoint in the old plan are for the waypoint after the commit cut and no longer relevant.
+            # Replace with blockers from the new plan
+            retained[-1].departure_blockers = list(new_waypoints[0].departure_blockers)
+            
+            # Remove the duplicate waypoint
             new_waypoints = new_waypoints[1:]
             array_offset = cut_idx
+        else:
+            logger.warning(
+                "Robot %s: new plan's waypoint 0 (%s) is not the committed"
+                "waypoint (%s). Appending.",
+                robot_id,
+                new_waypoints[0].name,
+                retained[-1].name,
+            )
 
+        # Stitch old and new waypoints
         ledger.waypoints = retained + new_waypoints
 
         # A plan that does not start before new_plan has had all of its own
         # waypoints replaced, remove it from the ledger without marking as complete.
+        dropped_entries = [
+            entry for entry in ledger.plan_entries if entry.array_offset >= array_offset
+        ]
+        for dropped in dropped_entries:
+            logger.debug(
+                "Robot %s: plan %s never contributed a dispatched waypoint - "
+                "replaced by %s before it could run.",
+                robot_id,
+                dropped.plan_id,
+                new_plan.plan_id,
+            )
         ledger.plan_entries = [
             entry for entry in ledger.plan_entries if entry.array_offset < array_offset
         ]
