@@ -81,7 +81,7 @@ class DependencyManager:
     """
 
     def __init__(self) -> None:
-        self._robots: dict[str, RobotPlanLedger] = {}
+        self._robot_ledgers: dict[str, RobotPlanLedger] = {}
 
         # Track Plan IDs (destination session + plan version) that have been completed.
         # Blockers referencing completed plan IDs are considered satisfied.
@@ -93,7 +93,7 @@ class DependencyManager:
         Set a robot's plan, replacing the previous one and discarding history.
         Waypoint 0 is the start waypoint.
         """
-        self._robots[robot_id] = RobotPlanLedger(
+        self._robot_ledgers[robot_id] = RobotPlanLedger(
             robot_id=robot_id,
             waypoints=list(plan.waypoints),
             plan_entries=[PlanLedgerEntry(plan_id=plan.plan_id, array_offset=0)],
@@ -108,7 +108,7 @@ class DependencyManager:
         Appends new_plan's waypoints as a new ledger entry.
         Clears cut index.
         """
-        ledger = self._robots[robot_id]
+        ledger = self._robot_ledgers[robot_id]
 
         cut_idx = (
             ledger.cut_index if ledger.cut_index is not None else ledger.latest_enqueued
@@ -171,7 +171,7 @@ class DependencyManager:
         Returns:
             list[DispatchedWaypoint]: waypoints newly enqueued, to pass to the robot controller.
         """
-        ledger = self._robots.get(robot_id)
+        ledger = self._robot_ledgers.get(robot_id)
         if ledger is None or ledger.execution_failed:
             return []
 
@@ -188,7 +188,7 @@ class DependencyManager:
         i = ledger.latest_enqueued
 
         logger.debug(
-            "Robot %s current_waypoint %d latest_enqueued %d",
+            "Getting valid waypoints for Robot %s at current_waypoint %d with latest_enqueued %d ..",
             robot_id,
             ledger.current_waypoint,
             ledger.latest_enqueued,
@@ -204,6 +204,13 @@ class DependencyManager:
                 )
                 break
             # Check the current waypoint's departure blockers
+
+            logger.debug(
+                "Checking Robot %s waypoint %d for blockers. Len blockers: %d",
+                robot_id,
+                (i + 1),
+                len(waypoints[i].departure_blockers)
+            )
             if not self._all_blockers_satisfied(waypoints[i].departure_blockers):
                 break
 
@@ -218,7 +225,11 @@ class DependencyManager:
                     index=i - entry.array_offset,
                 )
             )
-            logger.debug("Robot %s Waypoint %d to be enqueued.", robot_id, i)
+            logger.debug("Robot %s Waypoint %d : %s is not blocked and valid to be enqueued).", robot_id, i, waypoints[i].name)
+
+        logger.debug(
+            "End of get_valid waypoints_and_advance()."
+        )
 
         return valid
 
@@ -228,7 +239,7 @@ class DependencyManager:
                 logger.debug("blocker %s is completed", blocker)
                 continue
 
-            ledger = self._robots.get(blocker.name)
+            ledger = self._robot_ledgers.get(blocker.name)
 
             # Plan might not have arrived yet
             if ledger is None:
@@ -251,14 +262,13 @@ class DependencyManager:
                     blocker.required_progress,
                 )
                 return False
-
         return True
 
     def update_progress(self, robot_id: str, reached: DispatchedWaypoint) -> bool:
         """This must be called when a waypoint is reached.
         Returns False if this update was ignored.
         """
-        ledger = self._robots.get(robot_id)
+        ledger = self._robot_ledgers.get(robot_id)
         if ledger is None:
             logger.debug("update_progress: No plan ledger for %s", robot_id)
             return False
@@ -297,11 +307,11 @@ class DependencyManager:
         this ledger, drop it entirely so the next plan for this robot starts
         fresh via set_plan, rather than being spliced onto a ledger that never
         actually ran."""
-        ledger = self._robots.get(robot_id)
+        ledger = self._robot_ledgers.get(robot_id)
         if ledger is None:
             return False
         if ledger.current_waypoint == 0:
-            del self._robots[robot_id]
+            del self._robot_ledgers[robot_id]
         else:
             ledger.execution_failed = True
         return True
@@ -335,20 +345,22 @@ class DependencyManager:
         Ensures that the last-enqueued vertex is included.
         """
 
-        cut_indices = self._compute_commit_cut()
+        cut_indices = self._compute_commit_cut(self._robot_ledgers)
         committed_locations = self._build_committed_locations(cut_indices)
         # Check which agents have completed all waypoints in this plan.
         stationary_agents = self._build_stationary_agents()
         possible_obstacle_locations = self._build_failed_robot_obstacles()
         for robot_id, idx in cut_indices.items():
-            self._robots[robot_id].cut_index = idx
+            self._robot_ledgers[robot_id].cut_index = idx
         return CommitCut(committed_locations, stationary_agents, possible_obstacle_locations)
 
-    def _compute_commit_cut(self) -> dict[str, int]:
+    def _compute_commit_cut(
+        self, ledgers: dict[str, RobotPlanLedger]
+    ) -> dict[str, int]:
         """
         Computes the commit cut, beginning from what has been enqueued.
         """
-        if not self._robots:
+        if not ledgers:
             logger.warning("No robots")
             return {}
 
@@ -356,21 +368,21 @@ class DependencyManager:
             robot_id: ledger.latest_enqueued
             if ledger.latest_enqueued is not None
             else ledger.current_waypoint
-            for robot_id, ledger in self._robots.items()
+            for robot_id, ledger in ledgers.items()
         }
-        logger.debug("commit cut: %s", str(commit_cut))
+        logger.debug("initial commit cut: %s", str(commit_cut))
         previous_extended: set[str] = set()
         changed = True
 
-        # Extend the commit cut to satisfy the departure blockers of all waypoints included in the committed waypoints
+        # Extend the commit cut to satisfy the departure blockers that block any committed waypoints
         while changed:  # Extending the commit cut may result in new departure blockers that require further extension of the commit cut
             changed = False
             current_extended: set[str] = set()
 
-            for robot_id, ledger in self._robots.items():
+            for robot_id, ledger in ledgers.items():
                 for i in range(ledger.current_waypoint, commit_cut[robot_id] + 1):
                     for blocker in ledger.waypoints[i].departure_blockers:
-                        required_idx = self._extend_commit_cut_for(blocker)
+                        required_idx = self._extend_commit_cut_for(ledgers, blocker)
 
                         # Extend the commit cut to match this blocker.
                         # Track extensions to avoid cycles
@@ -378,7 +390,7 @@ class DependencyManager:
                             required_idx is not None
                             and blocker.name in commit_cut
                             and required_idx > commit_cut[blocker.name]
-                            and not self._robots[blocker.name].execution_failed
+                            and not ledgers[blocker.name].execution_failed
                         ):
                             commit_cut[blocker.name] = required_idx
                             current_extended.add(blocker.name)
@@ -392,13 +404,15 @@ class DependencyManager:
                 break
 
             previous_extended = current_extended
-
+        logger.debug("final extended commit cut: %s", str(commit_cut))
         return commit_cut
 
     def _extend_commit_cut_for(
-        self, departure_blocker: TrafficDependency
+        self,
+        ledgers: dict[str, RobotPlanLedger],
+        departure_blocker: TrafficDependency,
     ) -> Optional[int]:
-        """Finds the index of the earliest waypoint in this robot's plan that will satisfy the progress in the departure blocker.
+        """Finds the index of the earliest waypoint in the blocking robot's plan that will satisfy the progress in the departure blocker.
 
         Args:
             departure_blocker (TrafficDependency):
@@ -409,7 +423,7 @@ class DependencyManager:
         if departure_blocker.plan_id in self._completed_plan_ids:
             return None
 
-        ledger = self._robots.get(departure_blocker.name)
+        ledger = ledgers.get(departure_blocker.name)
 
         assert ledger is not None, (
             f"Blocker references unknown robot {departure_blocker.name}"
@@ -448,7 +462,7 @@ class DependencyManager:
         result = {}
 
         for robot_id, cut_idx in commit_cut.items():
-            ledger = self._robots.get(robot_id)
+            ledger = self._robot_ledgers.get(robot_id)
             if ledger is None:
                 continue
 
@@ -466,7 +480,7 @@ class DependencyManager:
 
     def _build_stationary_agents(self) -> set[str]:
         result = set()
-        for robot_id, ledger in self._robots.items():
+        for robot_id, ledger in self._robot_ledgers.items():
             if ledger.execution_failed:
                 # Stationary means the robot finished its plan and is parked
                 # at its goal. Failed robots handled separately.
@@ -484,7 +498,7 @@ class DependencyManager:
         trust that it stopped exactly where it last reported.
         """
         locations = []
-        for ledger in self._robots.values():
+        for ledger in self._robot_ledgers.values():
             if not ledger.execution_failed:
                 continue
             for i in range(ledger.current_waypoint + 1, ledger.latest_enqueued + 1):
@@ -492,33 +506,33 @@ class DependencyManager:
         return locations
 
     def has_robot(self, robot_id: str) -> bool:
-        return robot_id in self._robots
+        return robot_id in self._robot_ledgers
 
     def get_ledger(self, robot_id: str) -> Optional[RobotPlanLedger]:
-        return self._robots.get(robot_id)
+        return self._robot_ledgers.get(robot_id)
 
     def get_current_destination_session(self, robot_id: str) -> str | None:
         """The stable task identifier for whichever plan the robot is
         currently on (owns current_waypoint) - not always the latest entry,
         since dispatch can be ahead of confirmed progress."""
-        ledger = self._robots.get(robot_id)
+        ledger = self._robot_ledgers.get(robot_id)
         if ledger is None or not ledger.plan_entries:
             return None
         entry = self._entry_for_position(ledger, ledger.current_waypoint)
         return str(entry.plan_id.destination_session)
 
     def get_robots(self) -> list[str]:
-        return list(self._robots.keys())
+        return list(self._robot_ledgers.keys())
 
     def is_complete(self, robot_id: str) -> bool:
         """True if the robot has reached its final waypoint."""
-        ledger = self._robots.get(robot_id)
+        ledger = self._robot_ledgers.get(robot_id)
         if ledger is None:
             return False
         return ledger.current_waypoint >= len(ledger.waypoints) - 1
 
     def on_plan_complete(self, robot_id: str, plan_id: PlanId) -> bool:
-        ledger = self._robots.get(robot_id)
+        ledger = self._robot_ledgers.get(robot_id)
         if ledger is None:
             logger.warning("on_plan_complete called for unknown robot %s", robot_id)
             return False
@@ -538,7 +552,7 @@ class DependencyManager:
         Keeps the plan (rather than clearing it) so the robot's last confirmed
         location and progress remain known for the commit cut.
         """
-        ledger = self._robots.get(robot_id)
+        ledger = self._robot_ledgers.get(robot_id)
         if ledger is None or not ledger.plan_entries:
             return False
         if ledger.plan_entries[-1].plan_id != plan_id:
@@ -554,7 +568,7 @@ class DependencyManager:
         always the latest entry, since dispatch can be ahead of confirmed
         progress. No clamp needed: entry.array_offset is always <= current_waypoint
         by definition of ownership, so the subtraction is never negative."""
-        ledger = self._robots.get(robot_id)
+        ledger = self._robot_ledgers.get(robot_id)
         if ledger is None:
             return None
         entry = self._entry_for_position(ledger, ledger.current_waypoint)
