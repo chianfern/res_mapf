@@ -225,18 +225,19 @@ class PlanExecutor:
             )
 
         else:
+            superseded_session = existing_ledger.plan_entries[-1].plan_id.destination_session
             logger.info(
                 "Robot %s received new session %s while executing session %s",
                 robot_id,
                 plan.plan_id.destination_session,
-                existing_ledger.plan_entries[-1].plan_id.destination_session,
+                superseded_session,
             )
 
             # New plan received before previous plan was completed.
             self._dm.update_plan_after_cut(robot_id, plan)
 
             self._publish_task_status(
-                str(plan.plan_id.destination_session),
+                str(superseded_session),
                 robot_id,
                 TaskStatus.SUPERSEDED,
                 reason="A new session was received while executing the current one.",
