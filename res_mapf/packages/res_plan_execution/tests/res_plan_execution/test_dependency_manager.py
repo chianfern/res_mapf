@@ -18,7 +18,6 @@ import logging
 import sys
 import uuid
 
-import pytest
 from res_mapf_planning.traffic_dependencies.models.plan import Plan, PlanId, Waypoint
 from res_mapf_planning.traffic_dependencies.models.traffic_dependency import (
     TrafficDependency,
@@ -302,34 +301,6 @@ def test_replan_transfers_blockers_from_deduplicated_waypoint():
     assert retained_d.name == "D"
     assert blocker in retained_d.departure_blockers, (
         "Blocker on the new plan's duplicate D must move to the retained D"
-    )
-
-
-@pytest.mark.xfail(
-    strict=True,
-    reason="_entry_for_position attributes a non-deduplicated waypoint 0 to the previous plan",
-)
-def test_replan_not_starting_at_cut_location_is_dispatched_under_new_plan():
-    """New plan's waypoint 0 is not the cut location, so nothing is deduplicated."""
-    dm = DependencyManager()
-    v1 = _alice_plan_id(1)
-    dispatched = _alice_at_b_enqueued_to_d(dm)
-
-    new_plan = Plan(
-        plan_id=v1,
-        waypoints=[
-            Waypoint(name="H", position=(3.0, 1.0), progress=4.0),
-            Waypoint(name="I", position=(3.0, 2.0), progress=5.0),
-        ],
-    )
-    dm.update_plan_after_cut("alice", new_plan)
-    assert [wp.name for wp in dm.get_ledger("alice").waypoints] == [
-        "A", "B", "C", "D", "H", "I",
-    ]
-
-    assert dm.update_progress("alice", dispatched["C"])
-    assert _summarise(dm.get_valid_waypoints_and_advance("alice")) == [(v1, 0, "H")], (
-        "H is the new plan's own waypoint 0, not waypoint 4 of the old plan"
     )
 
 

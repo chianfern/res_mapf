@@ -17,7 +17,6 @@
 from typing import Callable
 from uuid import uuid4
 
-import pytest
 from res_mapf_planning.traffic_dependencies.models.plan import Plan, PlanId, Waypoint
 from res_plan_execution.plan_execution.dependency_manager import DependencyManager
 from res_plan_execution.plan_execution.plan_executor import PlanExecutor
@@ -297,10 +296,6 @@ def test_robot_can_be_planned_again_after_controller_rejects_first_enqueue() -> 
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="_handle_plan publishes SUPERSEDED with the new plan's session, not the old one",
-)
 def test_new_session_is_not_reported_as_superseded() -> None:
     """
     A plan for a new session arrives while the robot is still executing the
