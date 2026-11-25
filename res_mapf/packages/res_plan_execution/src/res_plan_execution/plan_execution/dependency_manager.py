@@ -395,43 +395,30 @@ class DependencyManager:
             return {}
 
         commit_cut = {
-            robot_id: ledger.latest_enqueued
+            robot_id: ledger.latest_enqueued    # should be the later waypoint between (latest_enqueued, desired)
             if ledger.latest_enqueued is not None
             else ledger.current_waypoint
             for robot_id, ledger in ledgers.items()
         }
         logger.debug("initial commit cut: %s", str(commit_cut))
-        previous_extended: set[str] = set()
         changed = True
 
         # Extend the commit cut to ensure all committed waypoints can be completed, by including additional waypoints to satisfy departure blockers.
         while changed:  # Extending the commit cut may result in new departure blockers that require further extension of the commit cut
             changed = False
-            current_extended: set[str] = set()
 
             for robot_id, ledger in ledgers.items():
-                for i in range(ledger.current_waypoint, commit_cut[robot_id]):
+                for i in range(ledger.latest_enqueued, commit_cut[robot_id]):
                     for blocker in ledger.waypoints[i].departure_blockers:
                         required_wp_idx = self._extend_commit_cut_for(ledgers, blocker)
 
-                        # Extend the commit cut to match this blocker.
-                        # Track extensions to avoid cycles
                         if (
                             required_wp_idx is not None
                             and required_wp_idx > commit_cut[blocker.name]
                         ):
                             commit_cut[blocker.name] = required_wp_idx
-                            current_extended.add(blocker.name)
                             changed = True
 
-            if current_extended and current_extended == previous_extended:
-                logger.error(
-                    "Cycle found between robots: %s",
-                    current_extended,
-                )
-                break
-
-            previous_extended = current_extended
         logger.debug("final extended commit cut: %s", str(commit_cut))
         return commit_cut
 
