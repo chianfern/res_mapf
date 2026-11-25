@@ -29,7 +29,9 @@ from res_plan_execution.plan_execution.dependency_manager import (
 )
 
 
-def _uuid_from_str(name, namespace=uuid.UUID("00000000-0000-0000-0000-000000000000")) -> uuid.UUID:
+def _uuid_from_str(
+    name: str, namespace: uuid.UUID = uuid.UUID("00000000-0000-0000-0000-000000000000")
+) -> uuid.UUID:
     return uuid.uuid5(namespace, name)
 
 
@@ -73,7 +75,12 @@ def _make_bob_plan(blocker: TrafficDependency) -> Plan:
     return Plan(
         plan_id=_bob_plan_id(0),
         waypoints=[
-            Waypoint(name="V", position=(0.0, 1.0), progress=0.0, departure_blockers=[blocker]),
+            Waypoint(
+                name="V",
+                position=(0.0, 1.0),
+                progress=0.0,
+                departure_blockers=[blocker],
+            ),
             Waypoint(name="W", position=(1.0, 1.0), progress=1.0),
         ],
     )
@@ -87,12 +94,14 @@ def _alice_at_b_enqueued_to_d(dm: DependencyManager) -> dict[str, DispatchedWayp
     """Alice on plan v0, reached B, with C and D enqueued. Returns dispatches by name."""
     dm.set_plan("alice", _make_alice_plan())
     dispatched = dm.get_valid_waypoints_and_advance("alice")
-    assert dm.update_progress("alice", dispatched[0]), "B was enqueued, must be accepted"
+    assert dm.update_progress("alice", dispatched[0]), (
+        "B was enqueued, must be accepted"
+    )
     dispatched += dm.get_valid_waypoints_and_advance("alice")
     return {d.waypoint.name: d for d in dispatched}
 
 
-def test_dm_basic_flow():
+def test_dm_basic_flow() -> None:
     """
     End-to-end trace through dispatch, progress, commit cut, and a replan
     max_enqueued = 2
@@ -108,16 +117,12 @@ def test_dm_basic_flow():
 
     handler = logging.StreamHandler(sys.stderr)
     handler.setLevel(logging.DEBUG)
-    handler.setFormatter(
-        logging.Formatter("%(levelname)s %(name)s: %(message)s")
-    )
+    handler.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
     root.addHandler(handler)
 
-
     dm = DependencyManager()
-    a0, a1 = _alice_plan_id(0), _alice_plan_id(1)
+    a0 = _alice_plan_id(0)
     dm.set_plan("alice", _make_alice_plan())
-
 
     b0 = _bob_plan_id(0)
 
@@ -130,36 +135,46 @@ def test_dm_basic_flow():
         return Plan(
             plan_id=b0,
             waypoints=[
-
                 Waypoint(name="V", position=(0.0, 0.0), progress=0.0),
                 Waypoint(name="W", position=(1.0, 0.0), progress=1.0),
-                Waypoint(name="X", position=(2.0, 0.0), progress=2.0, departure_blockers=departure_blockers),
-                Waypoint(name="Y", position=(3.0, 0.0), progress=3.0, )
+                Waypoint(
+                    name="X",
+                    position=(2.0, 0.0),
+                    progress=2.0,
+                    departure_blockers=departure_blockers,
+                ),
+                Waypoint(
+                    name="Y",
+                    position=(3.0, 0.0),
+                    progress=3.0,
+                ),
             ],
         )
 
-    dm.set_plan(
-        "bob", _make_dependent_bob_plan()
-    )
+    dm.set_plan("bob", _make_dependent_bob_plan())
     print()
 
-    dispatched_alice = dm.get_valid_waypoints_and_advance("alice")      # should dispatch B, C
+    dispatched_alice = dm.get_valid_waypoints_and_advance(
+        "alice"
+    )  # should dispatch B, C
     assert _summarise(dispatched_alice) == [(a0, 1, "B"), (a0, 2, "C")], (
         "A is the start and is not dispatched; B and C fill the two slots"
     )
-    dispatched_bob = dm.get_valid_waypoints_and_advance("bob")          # should dispatch W, X
+    dispatched_bob = dm.get_valid_waypoints_and_advance("bob")  # should dispatch W, X
     assert _summarise(dispatched_bob) == [(b0, 1, "W"), (b0, 2, "X")]
 
-    dm.update_progress("alice", dispatched_alice[0])                    # mark B complete
-    dispatched_alice = dm.get_valid_waypoints_and_advance("alice")      # should dispatch D
+    dm.update_progress("alice", dispatched_alice[0])  # mark B complete
+    dispatched_alice = dm.get_valid_waypoints_and_advance("alice")  # should dispatch D
     assert _summarise(dispatched_alice) == [(a0, 3, "D")]
 
-    dm.update_progress("bob", dispatched_bob[0])                        # mark W complete
-    dm.update_progress("bob", dispatched_bob[1])                        # mark X complete
-    dispatched_bob = dm.get_valid_waypoints_and_advance("bob")          # Y is next, but should not be dispatched due to blocker (cannot depart X)
-    assert _summarise(dispatched_bob) == [], ("bob 3 should be blocked")
+    dm.update_progress("bob", dispatched_bob[0])  # mark W complete
+    dm.update_progress("bob", dispatched_bob[1])  # mark X complete
+    dispatched_bob = dm.get_valid_waypoints_and_advance(
+        "bob"
+    )  # Y is next, but should not be dispatched due to blocker (cannot depart X)
+    assert _summarise(dispatched_bob) == [], "bob 3 should be blocked"
 
-    dm.compute_commit_cut()     # commit vertices should be Alice: 3 (D) and Bob: 2(X)
+    dm.compute_commit_cut()  # commit vertices should be Alice: 3 (D) and Bob: 2(X)
     ledger = dm.get_ledger("alice")
     print(ledger)
     print("Cut index:", ledger.cut_index)
@@ -169,8 +184,7 @@ def test_dm_basic_flow():
     )
 
 
-
-def test_dispatch_respects_max_enqueued():
+def test_dispatch_respects_max_enqueued() -> None:
     """With max_enqueued = 2, at most two waypoints are enqueued ahead of the robot."""
     dm = DependencyManager()
     v0 = _alice_plan_id(0)
@@ -193,18 +207,22 @@ def test_dispatch_respects_max_enqueued():
     )
 
 
-def test_update_progress_ignores_reports_it_cannot_place():
+def test_update_progress_ignores_reports_it_cannot_place() -> None:
     dm = DependencyManager()
     plan = _make_alice_plan()
     dispatched = _alice_at_b_enqueued_to_d(dm)
     before = dm.get_progress("alice")
 
-    never_enqueued = DispatchedWaypoint(plan_id=plan.plan_id, waypoint=plan.waypoints[5], index=5)
+    never_enqueued = DispatchedWaypoint(
+        plan_id=plan.plan_id, waypoint=plan.waypoints[5], index=5
+    )
     assert not dm.update_progress("alice", never_enqueued), (
         "F was never enqueued, so alice cannot have reached it"
     )
 
-    other_plan = DispatchedWaypoint(plan_id=_alice_plan_id(7), waypoint=plan.waypoints[2], index=2)
+    other_plan = DispatchedWaypoint(
+        plan_id=_alice_plan_id(7), waypoint=plan.waypoints[2], index=2
+    )
     assert not dm.update_progress("alice", other_plan), (
         "A report for a plan that is not in alice's ledger must be ignored"
     )
@@ -224,11 +242,11 @@ def test_update_progress_ignores_reports_it_cannot_place():
     ), "Only the accepted report for C may have changed alice's progress"
 
 
-def test_get_progress_unknown_robot():
+def test_get_progress_unknown_robot() -> None:
     assert DependencyManager().get_progress("alice") is None
 
 
-def test_replan_keeps_old_plan_until_robot_reaches_cut():
+def test_replan_keeps_old_plan_until_robot_reaches_cut() -> None:
     """
     Replan arrives while alice is between B and the cut at D. Waypoints up to
     D still belong to v0 and must still be accepted; v0 only completes once
@@ -273,7 +291,7 @@ def test_replan_keeps_old_plan_until_robot_reaches_cut():
     )
 
 
-def test_replan_arriving_with_robot_already_at_cut_drops_old_plan():
+def test_replan_arriving_with_robot_already_at_cut_drops_old_plan() -> None:
     dm = DependencyManager()
     dispatched = _alice_at_b_enqueued_to_d(dm)
     assert dm.update_progress("alice", dispatched["C"])
@@ -288,11 +306,13 @@ def test_replan_arriving_with_robot_already_at_cut_drops_old_plan():
     assert not dm.is_complete("alice"), "v1 still has waypoints to execute"
 
 
-def test_replan_transfers_blockers_from_deduplicated_waypoint():
+def test_replan_transfers_blockers_from_deduplicated_waypoint() -> None:
     dm = DependencyManager()
     _alice_at_b_enqueued_to_d(dm)
 
-    blocker = TrafficDependency(name="bob", plan_id=_bob_plan_id(0), required_progress=1.0)
+    blocker = TrafficDependency(
+        name="bob", plan_id=_bob_plan_id(0), required_progress=1.0
+    )
     new_plan = _make_alice_replan()
     new_plan.waypoints[0].departure_blockers.append(blocker)
     dm.update_plan_after_cut("alice", new_plan)
@@ -304,7 +324,7 @@ def test_replan_transfers_blockers_from_deduplicated_waypoint():
     )
 
 
-def test_second_replan_at_same_cut_replaces_first_without_completing_it():
+def test_second_replan_at_same_cut_replaces_first_without_completing_it() -> None:
     dm = DependencyManager()
     v0, v1, v2 = _alice_plan_id(0), _alice_plan_id(1), _alice_plan_id(2)
     _alice_at_b_enqueued_to_d(dm)
@@ -320,14 +340,17 @@ def test_second_replan_at_same_cut_replaces_first_without_completing_it():
     assert v1 not in dm._completed_plan_ids, "v1 was replaced, not finished"
 
     dm.set_plan(
-        "bob", _make_bob_plan(TrafficDependency(name="alice", plan_id=v1, required_progress=3.0))
+        "bob",
+        _make_bob_plan(
+            TrafficDependency(name="alice", plan_id=v1, required_progress=3.0)
+        ),
     )
     assert dm.get_valid_waypoints_and_advance("bob") == [], (
         "A blocker on a replaced plan must stay unsatisfied until bob is replanned"
     )
 
 
-def test_blocker_on_old_plan_is_honoured_across_replan():
+def test_blocker_on_old_plan_is_honoured_across_replan() -> None:
     """
     Bob waits for alice to reach D under v0. Alice is replanned at D. Blockers
     are no longer restamped, so bob's blocker still names v0 and must release
@@ -338,7 +361,9 @@ def test_blocker_on_old_plan_is_honoured_across_replan():
     dm.set_plan(
         "bob",
         _make_bob_plan(
-            TrafficDependency(name="alice", plan_id=_alice_plan_id(0), required_progress=3.0)
+            TrafficDependency(
+                name="alice", plan_id=_alice_plan_id(0), required_progress=3.0
+            )
         ),
     )
 
@@ -348,15 +373,17 @@ def test_blocker_on_old_plan_is_honoured_across_replan():
     )
 
     assert dm.update_progress("alice", dispatched["C"])
-    assert dm.get_valid_waypoints_and_advance("bob") == [], "alice is only at C (progress 2.0)"
-
-    assert dm.update_progress("alice", dispatched["D"])
-    assert _summarise(dm.get_valid_waypoints_and_advance("bob")) == [(_bob_plan_id(0), 1, "W")], (
-        "alice reached D, bob's blocker on v0 is satisfied"
+    assert dm.get_valid_waypoints_and_advance("bob") == [], (
+        "alice is only at C (progress 2.0)"
     )
 
+    assert dm.update_progress("alice", dispatched["D"])
+    assert _summarise(dm.get_valid_waypoints_and_advance("bob")) == [
+        (_bob_plan_id(0), 1, "W")
+    ], "alice reached D, bob's blocker on v0 is satisfied"
 
-def test_blocker_on_new_plan_uses_offset_progress():
+
+def test_blocker_on_new_plan_uses_offset_progress() -> None:
     """Bob waits for alice to reach H (progress 4.0) under v1."""
     dm = DependencyManager()
     dispatched = _alice_at_b_enqueued_to_d(dm)
@@ -364,7 +391,9 @@ def test_blocker_on_new_plan_uses_offset_progress():
     dm.set_plan(
         "bob",
         _make_bob_plan(
-            TrafficDependency(name="alice", plan_id=_alice_plan_id(1), required_progress=4.0)
+            TrafficDependency(
+                name="alice", plan_id=_alice_plan_id(1), required_progress=4.0
+            )
         ),
     )
 
@@ -376,20 +405,28 @@ def test_blocker_on_new_plan_uses_offset_progress():
 
     h = dm.get_valid_waypoints_and_advance("alice")[0]
     assert dm.update_progress("alice", h)
-    assert _summarise(dm.get_valid_waypoints_and_advance("bob")) == [(_bob_plan_id(0), 1, "W")], (
-        "alice reached H, bob's blocker on v1 is satisfied"
-    )
+    assert _summarise(dm.get_valid_waypoints_and_advance("bob")) == [
+        (_bob_plan_id(0), 1, "W")
+    ], "alice reached H, bob's blocker on v1 is satisfied"
 
 
-def test_commit_cut_reports_location_relative_to_owning_plan():
+def test_commit_cut_reports_location_relative_to_owning_plan() -> None:
     dm = DependencyManager()
     v0, v1 = _alice_plan_id(0), _alice_plan_id(1)
     dispatched = _alice_at_b_enqueued_to_d(dm)
 
     cut = dm.compute_commit_cut()
     committed = cut.committed_locations["alice"]
-    assert (committed.location, committed.task_id, committed.waypoint_index, committed.progress) == (
-        "D", str(v0), 3, 3.0,
+    assert (
+        committed.location,
+        committed.task_id,
+        committed.waypoint_index,
+        committed.progress,
+    ) == (
+        "D",
+        str(v0),
+        3,
+        3.0,
     ), "Cut is at the last enqueued waypoint, which v0 owns"
     assert cut.stationary_robots == set(), "alice has waypoints left"
 
@@ -398,12 +435,20 @@ def test_commit_cut_reports_location_relative_to_owning_plan():
     dm.get_valid_waypoints_and_advance("alice")  # enqueues H
 
     committed = dm.compute_commit_cut().committed_locations["alice"]
-    assert (committed.location, committed.task_id, committed.waypoint_index, committed.progress) == (
-        "H", str(v1), 1, 4.0,
+    assert (
+        committed.location,
+        committed.task_id,
+        committed.waypoint_index,
+        committed.progress,
+    ) == (
+        "H",
+        str(v1),
+        1,
+        4.0,
     ), "H is v1's waypoint 1, even though it sits at position 4 in the ledger"
 
 
-def test_cut_index_survives_ledger_trim():
+def test_cut_index_survives_ledger_trim() -> None:
     """
     Cut is computed at H, then alice reaches D which trims v0's waypoints off
     the front of the ledger. The next plan must still be spliced after H.
@@ -432,9 +477,12 @@ def test_cut_index_survives_ledger_trim():
     )
 
 
-def test_stationary_robot_is_reported_in_commit_cut():
+def test_stationary_robot_is_reported_in_commit_cut() -> None:
     dm = DependencyManager()
-    dm.set_plan("alice", Plan(plan_id=_alice_plan_id(0), waypoints=_make_alice_plan().waypoints[:2]))
+    dm.set_plan(
+        "alice",
+        Plan(plan_id=_alice_plan_id(0), waypoints=_make_alice_plan().waypoints[:2]),
+    )
     (b,) = dm.get_valid_waypoints_and_advance("alice")
     assert dm.update_progress("alice", b)
 
@@ -442,7 +490,7 @@ def test_stationary_robot_is_reported_in_commit_cut():
     assert dm.compute_commit_cut().stationary_robots == {"alice"}
 
 
-def test_enqueue_rejected_drops_ledger_that_never_ran():
+def test_enqueue_rejected_drops_ledger_that_never_ran() -> None:
     """If nothing was ever confirmed on this ledger, a rejected enqueue
     drops it entirely so the next plan for this robot starts fresh via
     set_plan, rather than being spliced onto a ledger that never ran."""
@@ -456,7 +504,7 @@ def test_enqueue_rejected_drops_ledger_that_never_ran():
     assert not dm.has_robot("alice")
 
 
-def test_enqueue_rejected_marks_failure_once_robot_has_progressed():
+def test_enqueue_rejected_marks_failure_once_robot_has_progressed() -> None:
     """Once the robot has confirmed progress, a rejected enqueue cannot
     simply drop the ledger - other robots may depend on its progress - so
     it is marked failed instead, same as on_plan_failed."""
@@ -473,11 +521,11 @@ def test_enqueue_rejected_marks_failure_once_robot_has_progressed():
     )
 
 
-def test_enqueue_rejected_unknown_robot():
+def test_enqueue_rejected_unknown_robot() -> None:
     assert not DependencyManager().on_enqueue_rejected("alice")
 
 
-def test_failed_robot_is_not_dispatched_and_keeps_others_blocked():
+def test_failed_robot_is_not_dispatched_and_keeps_others_blocked() -> None:
     """
     on_plan_failed keeps the robot's ledger but stops dispatching to it. Its
     plan is not completed, so robots blocked on it stay blocked until a
@@ -487,7 +535,10 @@ def test_failed_robot_is_not_dispatched_and_keeps_others_blocked():
     v0 = _alice_plan_id(0)
     dispatched = _alice_at_b_enqueued_to_d(dm)
     dm.set_plan(
-        "bob", _make_bob_plan(TrafficDependency(name="alice", plan_id=v0, required_progress=3.0))
+        "bob",
+        _make_bob_plan(
+            TrafficDependency(name="alice", plan_id=v0, required_progress=3.0)
+        ),
     )
 
     assert dm.on_plan_failed("alice", v0), "v0 is alice's active plan"
@@ -504,7 +555,7 @@ def test_failed_robot_is_not_dispatched_and_keeps_others_blocked():
     )
 
 
-def test_on_plan_failed_ignores_plan_that_is_no_longer_active():
+def test_on_plan_failed_ignores_plan_that_is_no_longer_active() -> None:
     dm = DependencyManager()
     _alice_at_b_enqueued_to_d(dm)
     dm.update_plan_after_cut("alice", _make_alice_replan())
@@ -516,7 +567,7 @@ def test_on_plan_failed_ignores_plan_that_is_no_longer_active():
     assert not dm.on_plan_failed("bob", _bob_plan_id(0)), "bob has no ledger"
 
 
-def test_new_plan_resumes_dispatch_after_failure():
+def test_new_plan_resumes_dispatch_after_failure() -> None:
     dm = DependencyManager()
     v1 = _alice_plan_id(1)
     dispatched = _alice_at_b_enqueued_to_d(dm)
@@ -530,7 +581,7 @@ def test_new_plan_resumes_dispatch_after_failure():
     )
 
 
-def test_commit_cut_for_failed_robot():
+def test_commit_cut_for_failed_robot() -> None:
     """
     Alice fails at B with C and D dispatched. She may be anywhere up to D, so
     C and D are possible obstacles. Bob's blocker on alice sits on bob's own
@@ -547,7 +598,10 @@ def test_commit_cut_for_failed_robot():
     v0 = _alice_plan_id(0)
     _alice_at_b_enqueued_to_d(dm)
     dm.set_plan(
-        "bob", _make_bob_plan(TrafficDependency(name="alice", plan_id=v0, required_progress=5.0))
+        "bob",
+        _make_bob_plan(
+            TrafficDependency(name="alice", plan_id=v0, required_progress=5.0)
+        ),
     )
     assert dm.on_plan_failed("alice", v0)
 
@@ -569,14 +623,14 @@ def test_commit_cut_for_failed_robot():
     )
 
 
-def test_commit_cut_has_no_possible_obstacles_without_a_failure():
+def test_commit_cut_has_no_possible_obstacles_without_a_failure() -> None:
     dm = DependencyManager()
     _alice_at_b_enqueued_to_d(dm)
 
     assert dm.compute_commit_cut().possible_obstacle_locations == []
 
 
-def test_on_plan_complete_only_completes_plans_in_the_ledger():
+def test_on_plan_complete_only_completes_plans_in_the_ledger() -> None:
     dm = DependencyManager()
     v0 = _alice_plan_id(0)
     dm.set_plan("alice", _make_alice_plan())

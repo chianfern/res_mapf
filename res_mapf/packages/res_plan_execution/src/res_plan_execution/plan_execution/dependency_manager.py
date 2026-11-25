@@ -33,19 +33,20 @@ logger = logging.getLogger("dependency_manager")
 class PlanLedgerEntry:
     """Each entry in a robot's ledger is a Plan and the position of its first waypoint in the robot's
     waypoints array."""
+
     plan_id: PlanId
     array_offset: int
 
 
 @dataclass
 class RobotPlanLedger:
-    """Hold all Plans and waypoints this robot is currently tracking.
-    """    
+    """Hold all Plans and waypoints this robot is currently tracking."""
+
     robot_id: str
-    waypoints: list[Waypoint]   # across all Plans
+    waypoints: list[Waypoint]  # across all Plans
     plan_entries: list[PlanLedgerEntry]
-    current_waypoint: int = 0   # index of most-recently-reached waypoint
-    latest_enqueued: int = 0 # index of last enqueued waypoint
+    current_waypoint: int = 0  # index of most-recently-reached waypoint
+    latest_enqueued: int = 0  # index of last enqueued waypoint
     cut_index: int | None = None
     execution_failed: bool = False
 
@@ -54,12 +55,15 @@ class RobotPlanLedger:
 class CommitCut:
     committed_locations: dict[str, CommittedLocation]
     stationary_robots: set[str]
-    possible_obstacle_locations: list[str]     # Waypoints that were dispatched but not reached. Robot might be on/between any. Must be treated as obstacles until resolved.
+    possible_obstacle_locations: list[
+        str
+    ]  # Waypoints that were dispatched but not reached. Robot might be on/between any. Must be treated as obstacles until resolved.
 
 
 @dataclass(frozen=True)
 class DispatchedWaypoint:
     """Returned by get_valid_waypoints_and_advance. To be passed back into update_progress."""
+
     plan_id: PlanId
     waypoint: Waypoint
     index: int  # position of this waypoint within its plan
@@ -69,6 +73,7 @@ class DispatchedWaypoint:
 class ProgressReport:
     """Returned by get_progress. reached_index/target_index are relative to
     the robot's current plan_id."""
+
     plan_id: PlanId
     reached_index: int
     target_index: int
@@ -86,7 +91,6 @@ class DependencyManager:
         # Track Plan IDs (destination session + plan version) that have been completed.
         # Blockers referencing completed plan IDs are considered satisfied.
         self._completed_plan_ids: set[PlanId] = set()  # TODO clean up
-
 
     def set_plan(self, robot_id: str, plan: Plan) -> None:
         """
@@ -116,7 +120,9 @@ class DependencyManager:
         )
         ledger.cut_index = None  # clear the previous cut index
 
-        retained = ledger.waypoints[: cut_idx + 1]  # remove waypoints after the cut index.
+        retained = ledger.waypoints[
+            : cut_idx + 1
+        ]  # remove waypoints after the cut index.
         new_waypoints = list(new_plan.waypoints)
 
         # new_plan's waypoint 0 is expected to be the the same location as the previous plan's last-committed.
@@ -131,7 +137,7 @@ class DependencyManager:
             # The blockers on the final waypoint in the old plan are for the waypoint after the commit cut and no longer relevant.
             # Replace with blockers from the new plan
             retained[-1].departure_blockers = list(new_waypoints[0].departure_blockers)
-            
+
             # Remove the duplicate waypoint
             new_waypoints = new_waypoints[1:]
             array_offset = cut_idx
@@ -210,7 +216,7 @@ class DependencyManager:
         # This function might be called after a commit cut is determined, but before a new plan arrives.
         upper_bound = len(waypoints) - 1
         if ledger.cut_index is not None:
-            upper_bound = ledger.cut_index   # inclusive upper bound
+            upper_bound = ledger.cut_index  # inclusive upper bound
 
         valid: list[DispatchedWaypoint] = []
 
@@ -238,7 +244,7 @@ class DependencyManager:
                 "Checking Robot %s waypoint %d for blockers. Len blockers: %d",
                 robot_id,
                 (i + 1),
-                len(waypoints[i].departure_blockers)
+                len(waypoints[i].departure_blockers),
             )
             if not self._all_blockers_satisfied(waypoints[i].departure_blockers):
                 break
@@ -254,11 +260,14 @@ class DependencyManager:
                     index=i - entry.array_offset,
                 )
             )
-            logger.debug("Robot %s Waypoint %d : %s is not blocked and valid to be enqueued).", robot_id, i, waypoints[i].name)
+            logger.debug(
+                "Robot %s Waypoint %d : %s is not blocked and valid to be enqueued).",
+                robot_id,
+                i,
+                waypoints[i].name,
+            )
 
-        logger.debug(
-            "End of get_valid waypoints_and_advance()."
-        )
+        logger.debug("End of get_valid waypoints_and_advance().")
 
         return valid
 
@@ -306,7 +315,9 @@ class DependencyManager:
         if entry is None:
             logger.warning(
                 "Robot %s: ignoring waypoint %s - plan %s is not part of its current ledger",
-                robot_id, reached.waypoint.name, reached.plan_id,
+                robot_id,
+                reached.waypoint.name,
+                reached.plan_id,
             )
             return False
 
@@ -314,7 +325,11 @@ class DependencyManager:
         if not (ledger.current_waypoint < position <= ledger.latest_enqueued):
             logger.warning(
                 "Robot %s: ignoring out-of-range waypoint %s (position %d not in [%d, %d])",
-                robot_id, reached.waypoint.name, position, ledger.current_waypoint, ledger.latest_enqueued,
+                robot_id,
+                reached.waypoint.name,
+                position,
+                ledger.current_waypoint,
+                ledger.latest_enqueued,
             )
             return False
 
@@ -366,7 +381,6 @@ class DependencyManager:
         for entry in ledger.plan_entries:
             entry.array_offset -= dropped
 
-
     def compute_commit_cut(self) -> CommitCut:
         """
         Computes committed locations without truncating current plans.
@@ -382,7 +396,9 @@ class DependencyManager:
         possible_obstacle_locations = self._build_failed_robot_obstacles()
         for robot_id, idx in cut_indices.items():
             self._robot_ledgers[robot_id].cut_index = idx
-        return CommitCut(committed_locations, stationary_agents, possible_obstacle_locations)
+        return CommitCut(
+            committed_locations, stationary_agents, possible_obstacle_locations
+        )
 
     def _compute_commit_cut(
         self, ledgers: dict[str, RobotPlanLedger]
@@ -395,7 +411,7 @@ class DependencyManager:
             return {}
 
         commit_cut = {
-            robot_id: ledger.latest_enqueued    # should be the later waypoint between (latest_enqueued, desired)
+            robot_id: ledger.latest_enqueued  # should be the later waypoint between (latest_enqueued, desired)
             if ledger.latest_enqueued is not None
             else ledger.current_waypoint
             for robot_id, ledger in ledgers.items()
@@ -554,7 +570,8 @@ class DependencyManager:
         if not any(entry.plan_id == plan_id for entry in ledger.plan_entries):
             logger.warning(
                 "on_plan_complete called for %s with plan_id %s not in its ledger",
-                robot_id, plan_id,
+                robot_id,
+                plan_id,
             )
             return False
         self._completed_plan_ids.add(plan_id)
@@ -572,7 +589,9 @@ class DependencyManager:
             return False
         if ledger.plan_entries[-1].plan_id != plan_id:
             logger.debug(
-                "Ignoring failure for %s: plan %s is no longer active", robot_id, plan_id
+                "Ignoring failure for %s: plan %s is no longer active",
+                robot_id,
+                plan_id,
             )
             return False
         ledger.execution_failed = True

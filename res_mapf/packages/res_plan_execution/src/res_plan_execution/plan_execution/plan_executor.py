@@ -190,7 +190,11 @@ class PlanExecutor:
 
             waypoints_with_callbacks = [
                 WaypointWithCallback(
-                    location=Location(name=d.waypoint.name, x=d.waypoint.position[0], y=d.waypoint.position[1]),
+                    location=Location(
+                        name=d.waypoint.name,
+                        x=d.waypoint.position[0],
+                        y=d.waypoint.position[1],
+                    ),
                     on_reached=self._make_reached_callback(robot_id, d),
                     task_id=str(d.plan_id.destination_session),
                 )
@@ -225,7 +229,9 @@ class PlanExecutor:
             )
 
         else:
-            superseded_session = existing_ledger.plan_entries[-1].plan_id.destination_session
+            superseded_session = existing_ledger.plan_entries[
+                -1
+            ].plan_id.destination_session
             logger.info(
                 "Robot %s received new session %s while executing session %s",
                 robot_id,
